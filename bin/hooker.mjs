@@ -3,10 +3,17 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { parseFlags } from "../lib/args.mjs";
 import { buildReport } from "../lib/aggregate.mjs";
+import { durationMicros, nowMicros } from "../lib/clock.mjs";
 import { openDb, resetDb } from "../lib/db.mjs";
 import { ingestGithub } from "../lib/github.mjs";
+import { generateEvents } from "../lib/mock.mjs";
 import { dbPath, profileHome, reportsDir } from "../lib/paths.mjs";
-import { insertEvent, recordMarker, recordSplit } from "../lib/record.mjs";
+import {
+  insertEvent,
+  insertMany,
+  recordMarker,
+  recordSplit,
+} from "../lib/record.mjs";
 import {
   formatDuration,
   rangeLabel,
@@ -21,6 +28,7 @@ import {
   tierStyle,
 } from "../lib/ansi.mjs";
 import { install, status, uninstall, upgrade } from "../lib/install.mjs";
+import { serve } from "../lib/serve.mjs";
 import {
   gitHookStatus,
   unwrapGitHooks,
@@ -90,6 +98,24 @@ async function cmdIngest(flags) {
   db.close();
 }
 
+async function cmdMock(flags) {
+  const count = Number(flags.count ?? 5000);
+  const last = flags.last ?? "30d";
+  const seed = flags.seed != null ? Number(flags.seed) : nowMicros() >>> 0;
+  const db = flags.reset ? await resetDb(dbPath()) : await openDb(dbPath());
+  const events = generateEvents({
+    count,
+    windowMicros: durationMicros(last),
+    now: nowMicros(),
+    seed,
+  });
+  insertMany(db, events);
+  db.close();
+  out(
+    `hooker: inserted ${events.length} mock events over the last ${last} (${flags.reset ? "reset" : "appended"})`,
+  );
+}
+
 function waitNote(report, paint) {
   if (report.wait.count === 0) {
     return "";
@@ -157,6 +183,14 @@ async function cmdReport(flags) {
   } else {
     printReport(report, makePaint(colorEnabled(flags)));
   }
+}
+
+async function cmdServe(flags) {
+  const { url } = await serve({
+    port: flags.port != null ? Number(flags.port) : undefined,
+    host: flags.host,
+  });
+  out(`hooker: serving report UI + API at ${url} (Ctrl-C to stop)`);
 }
 
 function isCursor(flags) {
@@ -256,7 +290,9 @@ const COMMANDS = {
   reset: cmdReset,
   record: cmdRecord,
   ingest: cmdIngest,
+  mock: cmdMock,
   report: cmdReport,
+  serve: cmdServe,
   install: cmdInstall,
   upgrade: cmdUpgrade,
   update: cmdUpgrade,
@@ -271,7 +307,7 @@ async function main() {
   const command = COMMANDS[positional[0]];
   if (!command) {
     out(
-      "usage: hooker <init|reset|record|ingest|report|install|upgrade|update|uninstall|install-git|uninstall-git|status> [flags]",
+      "usage: hooker <init|reset|record|ingest|mock|report|serve|install|upgrade|update|uninstall|install-git|uninstall-git|status> [flags]",
     );
     process.exitCode = positional[0] ? 1 : 0;
     return;
