@@ -11,9 +11,9 @@ No registry — install straight from GitHub (needs Node ≥ 22.5 for `node:sqli
 
 ```
 npx github:rmcfadden/hooker install        # wire recorders into the current project
-# or add it as a dev dependency and use the `profile` bin:
+# or add it as a dev dependency and use the `hooker` bin:
 npm i -D github:rmcfadden/hooker
-npx profile install
+npx hooker install
 ```
 
 The recorders are path-referenced into `node_modules/hooker`, and timings are written to a
@@ -53,20 +53,20 @@ non-blocking (Cursor only enforces `deny`; they emit `allow`).
 ## CLI
 
 ```
-profile init | reset               # create / drop+recreate the SQLite DB
-profile ingest --github --since 2026-07-01                 # pull GitHub Actions timings
-profile report --from 2026-07-01 --to 2026-07-22           # whole-day range (wait tier excluded)
-profile report --from 2026-07-22T14:00:00 --to 2026-07-22T14:30:00   # second-precise slice
-profile report --last 1h                                   # rolling window (30s/90m/2h/1d)
-profile report --from … --to … --include-wait              # fold user think-time back in
-profile report --last 1h --no-color                        # plain text (color is on by default)
-profile report --last 1d --group category                  # roll up into vcs/test/lint/pkg/…
-profile report --from … --to … --group tier,command,subcommand --html
-profile install [--target <dir>] [--wrap-hooks]            # wire recorders into a project
-profile install --host cursor [--global]                  # wire Cursor recorders (.cursor/hooks.json)
-profile install-git                                        # time each git-hook step in place
-profile upgrade [--host cursor]                            # re-apply the current install (run after a git pull)
-profile status / profile uninstall [--host cursor] / profile uninstall-git
+hooker init | reset               # create / drop+recreate the SQLite DB
+hooker ingest --github --since 2026-07-01                 # pull GitHub Actions timings
+hooker report --from 2026-07-01 --to 2026-07-22           # whole-day range (wait tier excluded)
+hooker report --from 2026-07-22T14:00:00 --to 2026-07-22T14:30:00   # second-precise slice
+hooker report --last 1h                                   # rolling window (30s/90m/2h/1d)
+hooker report --from … --to … --include-wait              # fold user think-time back in
+hooker report --last 1h --no-color                        # plain text (color is on by default)
+hooker report --last 1d --group category                  # roll up into vcs/test/lint/pkg/…
+hooker report --from … --to … --group tier,command,subcommand --html
+hooker install [--target <dir>] [--wrap-hooks]            # wire recorders into a project
+hooker install --host cursor [--global]                  # wire Cursor recorders (.cursor/hooks.json)
+hooker install-git                                        # time each git-hook step in place
+hooker upgrade [--host cursor]                            # re-apply the current install (run after a git pull)
+hooker status / hooker uninstall [--host cursor] / hooker uninstall-git
 ```
 
 **Categories & subcategories.** Every event is rolled up into a two-level taxonomy, **derived at
@@ -98,15 +98,15 @@ to force those on). The recorder scripts are path-referenced, so their behavior 
 ## Capture
 
 Hot-path recorders (`hooks/*.sh`) write **directly into SQLite** (WAL mode) via
-`profile record` — safe under parallel writers (many sessions / hooks at once). A tool
+`hooker record` — safe under parallel writers (many sessions / hooks at once). A tool
 call's start lands in the `pending` table (PreToolUse) and is paired + split into
 `event` rows on completion (PostToolUse); guards and git-hook steps insert completed rows.
 `perl Time::HiRes` gives the µs clock; `jq` extracts payload fields. No flat file, no
-offline ingest step (only GitHub timings are pulled on demand). `profile install` adds the
+offline ingest step (only GitHub timings are pulled on demand). `hooker install` adds the
 two tool recorders to `.claude/settings.local.json` and, with `--wrap-hooks`, wraps existing
 hooks in `.claude/settings.json` for self-timing (transparent — stdout and exit preserved).
 
-`profile install-git` wraps each step in the local `.git/hooks/pre-commit`/`pre-push` with
+`hooker install-git` wraps each step in the local `.git/hooks/pre-commit`/`pre-push` with
 `hooks/profile-step.sh` in place (idempotent, reversible via `uninstall-git`), so every lint
 step and test run is timed under the `git-hook` tier.
 
