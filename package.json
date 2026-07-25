@@ -1,0 +1,21 @@
+{
+  "name": "hooker",
+  "version": "0.1.0",
+  "description": "Profile Claude/Cursor/git/GitHub hooks and tool calls into SQLite with a CLI + HTML report",
+  "type": "module",
+  "bin": {
+    "profile": "bin/profile.mjs"
+  },
+  "files": [
+    "bin",
+    "lib",
+    "hooks",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=22.5.0"
+  },
+  "scripts": {
+    "test": "node --test"
+  }
+}
