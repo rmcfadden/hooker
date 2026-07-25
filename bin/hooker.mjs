@@ -2,13 +2,13 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
-import { parseFlags } from "../lib/args.mjs";
-import { buildReport } from "../lib/aggregate.mjs";
-import { durationMicros, nowMicros } from "../lib/clock.mjs";
-import { openDb, resetDb } from "../lib/db.mjs";
+import { parseFlags } from "../lib/args.ts";
+import { buildReport } from "../lib/aggregate.ts";
+import { durationMicros, nowMicros } from "../lib/clock.ts";
+import { openDb, resetDb } from "../lib/db.ts";
 import { ingestGithub } from "../lib/github.mjs";
 import { generateEvents } from "../lib/mock.mjs";
-import { dbPath, profileHome, reportsDir } from "../lib/paths.mjs";
+import { dbPath, profileHome, reportsDir } from "../lib/paths.ts";
 import {
   insertEvent,
   insertMany,
@@ -19,7 +19,7 @@ import {
   formatDuration,
   rangeLabel,
   renderReport,
-} from "../lib/report-html.mjs";
+} from "../lib/report-html.ts";
 import {
   categoryStyle,
   colorEnabled,
@@ -27,7 +27,7 @@ import {
   heatStyle,
   makePaint,
   tierStyle,
-} from "../lib/ansi.mjs";
+} from "../lib/ansi.ts";
 import { install, status, uninstall, upgrade } from "../lib/install.mjs";
 import { serve } from "../lib/serve.mjs";
 import {

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { join } from "node:path";
 import { test } from "node:test";
-import { dataDir, dbPath } from "../lib/paths.mjs";
+import { dataDir, dbPath } from "../lib/paths.ts";
 
 test("dataDir honors PROFILE_DATA_DIR, else project-local .profile", () => {
   const saved = process.env.PROFILE_DATA_DIR;

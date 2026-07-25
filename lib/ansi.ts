@@ -1,4 +1,6 @@
-const ANSI = {
+import type { Flags, Paint, Segment, StyleName } from "./types.ts";
+
+const ANSI: Record<StyleName, string> = {
   reset: "\x1b[0m",
   bold: "\x1b[1m",
   dim: "\x1b[2m",
@@ -13,9 +15,11 @@ const ANSI = {
 };
 
 /** A painter: wraps text in the named ANSI styles, or returns it untouched when disabled. */
-export function makePaint(enabled) {
+export function makePaint(enabled: boolean): Paint {
   return (text, ...styles) => {
-    const codes = styles.map((s) => ANSI[s]).filter(Boolean);
+    const codes = styles
+      .map((s) => (s ? ANSI[s] : undefined))
+      .filter((c): c is string => Boolean(c));
     if (!enabled || codes.length === 0) {
       return String(text);
     }
@@ -28,7 +32,7 @@ export function makePaint(enabled) {
  * once it would exceed `width`, otherwise pad with spaces. Visible width is always `width + 1`, so
  * every row's following columns line up regardless of how long the label is.
  */
-export function fitSegments(segments, width, paint) {
+export function fitSegments(segments: Segment[], width: number, paint: Paint): string {
   let used = 0;
   let painted = "";
   for (const { text, style } of segments) {
@@ -43,7 +47,7 @@ export function fitSegments(segments, width, paint) {
   return painted + " ".repeat(width - used + 1);
 }
 
-const TIER_STYLE = {
+const TIER_STYLE: Record<string, StyleName> = {
   "claude-tool": "cyan",
   "claude-hook": "indigo",
   "git-hook": "amber",
@@ -52,11 +56,11 @@ const TIER_STYLE = {
 };
 
 /** ANSI style name for a tier's label (unknown tiers dim to gray). */
-export function tierStyle(tier) {
+export function tierStyle(tier: string): StyleName {
   return TIER_STYLE[tier] ?? "gray";
 }
 
-const CATEGORY_STYLE = {
+const CATEGORY_STYLE: Record<string, StyleName> = {
   vcs: "amber",
   test: "green",
   lint: "yellow",
@@ -74,12 +78,12 @@ const CATEGORY_STYLE = {
 };
 
 /** ANSI style name for a category's label (unknown categories dim to gray). */
-export function categoryStyle(category) {
+export function categoryStyle(category: string): StyleName {
   return CATEGORY_STYLE[category] ?? "gray";
 }
 
 /** Duration heat: count-only 0µs dims, then green < 1s, yellow < 10s, red at or above. */
-export function heatStyle(us) {
+export function heatStyle(us: number): StyleName {
   if (us === 0) {
     return "gray";
   }
@@ -93,7 +97,7 @@ export function heatStyle(us) {
 }
 
 /** Whether to colorize: on by default; off for HTML output, `--no-color`, or the NO_COLOR env. */
-export function colorEnabled(flags, env = process.env) {
+export function colorEnabled(flags: Flags, env: NodeJS.ProcessEnv = process.env): boolean {
   if (flags.html || env.NO_COLOR) {
     return false;
   }

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { openDb } from "../lib/db.mjs";
+import { openDb } from "../lib/db.ts";
 import { insertEvent, insertMany, recordMarker } from "../lib/record.mjs";
 
 const sample = {

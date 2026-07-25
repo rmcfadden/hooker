@@ -1,8 +1,12 @@
 import { mkdir, rm } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { dirname } from "node:path";
+import type { Db } from "./types.ts";
 
-const { DatabaseSync } = createRequire(import.meta.url)("node:sqlite");
+// node:sqlite is still gated behind require() rather than a bare import in the supported Node range.
+const { DatabaseSync } = createRequire(import.meta.url)(
+  "node:sqlite",
+) as typeof import("node:sqlite");
 
 export const SCHEMA = `
 CREATE TABLE IF NOT EXISTS event (
@@ -28,7 +32,7 @@ CREATE TABLE IF NOT EXISTS pending (
 `;
 
 /** Open (creating the parent dir + schema) a WAL-mode SQLite database at path. */
-export async function openDb(path) {
+export async function openDb(path: string): Promise<Db> {
   await mkdir(dirname(path), { recursive: true });
   const db = new DatabaseSync(path);
   // busy_timeout must precede the first write so journal_mode/schema retry instead of SQLITE_BUSY under concurrent opens.
@@ -40,7 +44,7 @@ export async function openDb(path) {
 }
 
 /** Delete the database (and its WAL/SHM sidecars) and recreate it on the current schema. */
-export async function resetDb(path) {
+export async function resetDb(path: string): Promise<Db> {
   for (const suffix of ["", "-wal", "-shm"]) {
     await rm(`${path}${suffix}`, { force: true });
   }

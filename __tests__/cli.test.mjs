@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
 import { main, setWriter } from "../bin/hooker.mjs";
-import { openDb } from "../lib/db.mjs";
+import { openDb } from "../lib/db.ts";
 import { withFakeGh } from "./fake-gh.mjs";
 
 // Isolate every CLI invocation from the user's real ~/.profile data.

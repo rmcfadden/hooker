@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { isWaitTier, resolveTier, WAIT_TIER } from "../lib/tiers.mjs";
+import { isWaitTier, resolveTier, WAIT_TIER } from "../lib/tiers.ts";
 
 test("resolveTier reclassifies user-blocked tools to the wait tier", () => {
   assert.equal(resolveTier("claude-tool", "AskUserQuestion"), WAIT_TIER);

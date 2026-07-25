@@ -2,8 +2,8 @@ import { spawn } from "node:child_process";
 import { mkdtemp } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { openDb } from "../lib/db.mjs";
-import { hooksDir } from "../lib/paths.mjs";
+import { openDb } from "../lib/db.ts";
+import { hooksDir } from "../lib/paths.ts";
 
 export function runHook(args, input, dataDir) {
   return new Promise((resolve, reject) => {

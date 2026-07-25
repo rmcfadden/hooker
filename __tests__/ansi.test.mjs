@@ -7,7 +7,7 @@ import {
   heatStyle,
   makePaint,
   tierStyle,
-} from "../lib/ansi.mjs";
+} from "../lib/ansi.ts";
 
 const plain = makePaint(false);
 const seg = (text, style = null) => ({ text, style });
