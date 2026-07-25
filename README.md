@@ -5,6 +5,16 @@ Actions steps into a SQLite database, and aggregates totals by date range groupe
 **tier → category → subcategory → command** taxonomy. Self-contained, zero external dependencies
 (`node:sqlite`, `node:test`, inline-SVG charts); `gh` is only needed for the GitHub source.
 
+## Screenshots
+
+**Colorized CLI report** — `hooker report --last hour`:
+
+<img src="docs/report-cli.png" alt="hooker CLI report for the last hour" width="780">
+
+**Live web report** — `hooker serve`, with range presets + custom datetime pickers:
+
+<img src="docs/report-web.png" alt="hooker web report UI" width="900">
+
 ## Install into a project
 
 No registry — install straight from GitHub (needs Node ≥ 22.5 for `node:sqlite`):
