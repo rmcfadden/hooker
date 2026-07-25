@@ -62,6 +62,7 @@ hooker report --from … --to … --include-wait              # fold user think-
 hooker report --last 1h --no-color                        # plain text (color is on by default)
 hooker report --last 1d --group category                  # roll up into vcs/test/lint/pkg/…
 hooker report --from … --to … --group tier,command,subcommand --html
+hooker serve [--port 4180] [--host 127.0.0.1]             # live React report UI + JSON API
 hooker install [--target <dir>] [--wrap-hooks]            # wire recorders into a project
 hooker install --host cursor [--global]                  # wire Cursor recorders (.cursor/hooks.json)
 hooker install-git                                        # time each git-hook step in place
@@ -87,8 +88,35 @@ git-hook amber, wait purple), duration heat (green → yellow → red), dimmed c
 
 **Report ranges.** `--from`/`--to` take either a bare day (`2026-07-22`, snapped to the whole
 UTC day) or a second-precise datetime (`2026-07-22T14:30:00`, interpreted in local time unless it
-carries an explicit offset like `…Z`). `--last <span>` (`30s`/`90m`/`2h`/`1d`) reports a rolling
-window ending now and overrides `--from`/`--to`.
+carries an explicit offset like `…Z`). `--last <span>` reports a rolling window ending now and
+overrides `--from`/`--to`; a span is a count + unit suffix (`30s`/`90m`/`2h`/`1d`/`1w`) or a
+bare/counted word (`hour`, `day`, `2weeks`).
+
+## Web report (`hooker serve`)
+
+`hooker serve` starts a small zero-dependency HTTP server (default `http://127.0.0.1:4180`)
+that exposes the live SQLite data as JSON and serves an interactive React report:
+
+- `GET /api/report?from=&to=&last=&group=&includeWait=` — the same payload as `hooker report`,
+  re-queried per request so it always reflects the latest events.
+- `GET /api/meta` — `now` plus the epoch-µs span of recorded events (used to bound the pickers).
+
+The UI (in [`web/`](web/), Vite + React + TypeScript + Tailwind) has a **range dropdown** with
+relative presets (last 15 min / hour / 6 h / 24 h / 7 days / 30 days / all time) and a **custom
+range** with `datetime-local` from/to pickers, plus group-by, include-wait, and auto-refresh
+controls. Changing any control re-fetches `/api/report` live.
+
+```
+cd web && npm install && npm run build   # build the bundle once
+hooker serve                             # then open http://127.0.0.1:4180
+
+# or develop the UI with hot-reload (Vite proxies /api → hooker serve):
+hooker serve &                           # API on :4180
+cd web && npm run dev                    # UI on :5173
+```
+
+`hooker serve` shows a build hint at `/` until `web/dist` exists; the `/api/*` routes work
+regardless.
 
 `upgrade` (alias `update`) refreshes the full wiring in one shot — recorders, guard-wrapping,
 and git-hook steps — re-applying only what's already installed (add `--wrap-hooks` / `--git`
