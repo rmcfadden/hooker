@@ -1,9 +1,24 @@
-# profile — hook & tool-call timing profiler
+# hooker — hook & tool-call timing profiler
 
-Captures **elapsed time** for Claude Code hooks, Claude tool calls, git hooks, and GitHub
-Actions steps into a SQLite database, and aggregates totals by date range grouped by
-**tier → hook → command**. Self-contained, zero external dependencies (`node:sqlite`,
-`node:test`, inline-SVG charts); `gh` is only needed for the GitHub source.
+Captures **elapsed time** for Claude Code / Cursor hooks, tool calls, git hooks, and GitHub
+Actions steps into a SQLite database, and aggregates totals by date range grouped by a derived
+**tier → category → subcategory → command** taxonomy. Self-contained, zero external dependencies
+(`node:sqlite`, `node:test`, inline-SVG charts); `gh` is only needed for the GitHub source.
+
+## Install into a project
+
+No registry — install straight from GitHub (needs Node ≥ 22.5 for `node:sqlite`):
+
+```
+npx github:rmcfadden/hooker install        # wire recorders into the current project
+# or add it as a dev dependency and use the `profile` bin:
+npm i -D github:rmcfadden/hooker
+npx profile install
+```
+
+The recorders are path-referenced into `node_modules/hooker`, and timings are written to a
+**project-local `.profile/`** directory (add `.profile/` to the project's `.gitignore`). Set
+`$PROFILE_DATA_DIR` to override the location.
 
 ## Data model
 
