@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
+import { pathToFileURL } from "node:url";
 import { parseFlags } from "../lib/args.mjs";
 import { buildReport } from "../lib/aggregate.mjs";
 import { durationMicros, nowMicros } from "../lib/clock.mjs";
@@ -40,8 +41,18 @@ import {
   uninstallCursor,
 } from "../lib/install-cursor.mjs";
 
+const stdoutLine = (line) => process.stdout.write(`${line}\n`);
+
+// Output sink — swappable so tests (or embedders) can capture CLI output instead of stdout.
+let writeLine = stdoutLine;
+
+/** Redirect CLI output; call with no args to restore the default stdout writer. */
+export function setWriter(fn = stdoutLine) {
+  writeLine = fn;
+}
+
 function out(line) {
-  process.stdout.write(`${line}\n`);
+  writeLine(line);
 }
 
 async function cmdInit() {
@@ -186,11 +197,12 @@ async function cmdReport(flags) {
 }
 
 async function cmdServe(flags) {
-  const { url } = await serve({
+  const result = await serve({
     port: flags.port != null ? Number(flags.port) : undefined,
     host: flags.host,
   });
-  out(`hooker: serving report UI + API at ${url} (Ctrl-C to stop)`);
+  out(`hooker: serving report UI + API at ${result.url} (Ctrl-C to stop)`);
+  return result;
 }
 
 function isCursor(flags) {
@@ -302,8 +314,8 @@ const COMMANDS = {
   status: cmdStatus,
 };
 
-async function main() {
-  const { positional, flags } = parseFlags(process.argv.slice(2));
+export async function main(argv = process.argv.slice(2)) {
+  const { positional, flags } = parseFlags(argv);
   const command = COMMANDS[positional[0]];
   if (!command) {
     out(
@@ -312,10 +324,13 @@ async function main() {
     process.exitCode = positional[0] ? 1 : 0;
     return;
   }
-  await command(flags);
+  return command(flags);
 }
 
-main().catch((err) => {
-  process.stderr.write(`hooker: ${err.stack ?? err}\n`);
-  process.exit(1);
-});
+// Only auto-run when executed as the CLI entry point, so tests can import main().
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main().catch((err) => {
+    process.stderr.write(`hooker: ${err.stack ?? err}\n`);
+    process.exit(1);
+  });
+}

@@ -69,3 +69,37 @@ test("unknown API routes 404 as JSON", async () => {
     server.close();
   }
 });
+
+test("the root path serves the built web bundle's index.html", async () => {
+  const { server, url } = await seededServer();
+  try {
+    const res = await fetch(`${url}/`);
+    assert.equal(res.status, 200);
+    assert.match(res.headers.get("content-type"), /text\/html/);
+    assert.match(await res.text(), /<!doctype html>/i);
+  } finally {
+    server.close();
+  }
+});
+
+test("a real asset is served with its content-type", async () => {
+  const { server, url } = await seededServer();
+  try {
+    const res = await fetch(`${url}/assets/index-D142FQuR.css`);
+    assert.equal(res.status, 200);
+    assert.match(res.headers.get("content-type"), /text\/css/);
+  } finally {
+    server.close();
+  }
+});
+
+test("an unknown non-API path falls back to index.html (client-side routing)", async () => {
+  const { server, url } = await seededServer();
+  try {
+    const res = await fetch(`${url}/some/deep/spa/route`);
+    assert.equal(res.status, 200);
+    assert.match(res.headers.get("content-type"), /text\/html/);
+  } finally {
+    server.close();
+  }
+});

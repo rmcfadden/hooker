@@ -16,6 +16,7 @@
     "node": ">=22.5.0"
   },
   "scripts": {
-    "test": "node --test"
+    "test": "node --test",
+    "coverage": "node --test --experimental-test-coverage --test-coverage-lines=0.95 --test-coverage-functions=0.95"
   }
 }
