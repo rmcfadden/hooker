@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { categorize, subcategorize } from "../lib/categories.mjs";
+import { categorize, subcategorize } from "../lib/categories.ts";
 
 test("categorize is tier-first: wait and guards never fall through to command rules", () => {
   assert.equal(

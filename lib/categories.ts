@@ -1,5 +1,24 @@
 import { extname } from "node:path";
-import { isWaitTier } from "./tiers.mjs";
+import { isWaitTier } from "./tiers.ts";
+import type { CategorizableRow } from "./types.ts";
+
+/** High-level category buckets a recorded row can fall into. */
+export type Category =
+  | "wait"
+  | "hook"
+  | "vcs"
+  | "test"
+  | "lint"
+  | "build"
+  | "pkg"
+  | "search"
+  | "sys"
+  | "run"
+  | "shell"
+  | "edit"
+  | "read"
+  | "agent"
+  | "other";
 
 const VCS = new Set(["git", "gh"]);
 const TEST = new Set([
@@ -86,7 +105,7 @@ const SHELL = new Set([
   "zsh",
   "sh",
 ]);
-const FILE_HOOKS = {
+const FILE_HOOKS: Record<string, "edit" | "read" | "search"> = {
   Edit: "edit",
   Write: "edit",
   MultiEdit: "edit",
@@ -95,19 +114,19 @@ const FILE_HOOKS = {
   Glob: "search",
 };
 
-const COMMAND_CATEGORY = new Map();
+const COMMAND_CATEGORY = new Map<string, "search" | "sys" | "run" | "shell">();
 for (const [category, set] of [
   ["search", SEARCH],
   ["sys", SYS],
   ["run", RUNNERS],
   ["shell", SHELL],
-]) {
+] as const) {
   for (const command of set) COMMAND_CATEGORY.set(command, category);
 }
 
 /** Category for a shell command from its executable + verb (git → vcs, npm test → test, …).
  * Subcommand rules win first (so `git add` stays vcs, not pkg), then the executable lookup. */
-function bashCategory(command, subcommand) {
+function bashCategory(command: string, subcommand?: string | null): Category {
   const sub = subcommand ?? "";
   if (VCS.has(command)) return "vcs";
   if (TEST.has(sub) || TEST.has(command)) return "test";
@@ -118,7 +137,7 @@ function bashCategory(command, subcommand) {
 }
 
 /** High-level category for a recorded row — tier-first (wait/hook), then command-driven. */
-export function categorize({ tier, hook, command, subcommand }) {
+export function categorize({ tier, hook, command, subcommand }: CategorizableRow): Category {
   if (isWaitTier(tier)) return "wait";
   if (tier === "claude-hook") return "hook";
   if (tier === "git-hook") return bashCategory(command, subcommand);
@@ -129,7 +148,7 @@ export function categorize({ tier, hook, command, subcommand }) {
 /** The curated middle tier between category and the raw command — the specific verb/file-kind.
  * File tools → extension (`.tsx`); Bash → its verb (`push`, `install`, `tsc`, test kind); else
  * `"default"` when there's no meaningful sub, keeping every label a uniform three parts. */
-export function subcategorize(row) {
+export function subcategorize(row: CategorizableRow): string {
   const category = categorize(row);
   if (category === "edit" || category === "read") {
     return extname(row.subcommand ?? row.command ?? "") || "default";

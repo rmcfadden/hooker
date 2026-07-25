@@ -5,7 +5,7 @@ import {
   durationMicros,
   isoToMicros,
   MICROS_PER_DAY,
-} from "../lib/clock.mjs";
+} from "../lib/clock.ts";
 
 test("boundMicros snaps a bare date to the UTC day boundary", () => {
   assert.equal(boundMicros("2026-07-22"), isoToMicros("2026-07-22T00:00:00Z"));

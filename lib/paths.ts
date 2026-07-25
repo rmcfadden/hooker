@@ -12,19 +12,19 @@ export const profileHome = resolve(libDir, "..");
  * (wiped on reinstall) and every project keeps its own timings. Hooks run at the project root, so
  * `cwd` resolves there; run the CLI from the project root too (or set `$PROFILE_DATA_DIR`).
  */
-export function dataDir() {
+export function dataDir(): string {
   return process.env.PROFILE_DATA_DIR ?? join(process.cwd(), ".profile");
 }
 
-export function dbPath() {
+export function dbPath(): string {
   return join(dataDir(), "profile.db");
 }
 
-export function reportsDir() {
+export function reportsDir(): string {
   return join(dataDir(), "reports");
 }
 
 /** Recorder scripts live with the package (vendored dir or `node_modules/hooker`), not the project. */
-export function hooksDir(home = profileHome) {
+export function hooksDir(home: string = profileHome): string {
   return join(home, "hooks");
 }

@@ -5,11 +5,11 @@ import {
   buildReport,
   percentile,
   rangeMicros,
-} from "../lib/aggregate.mjs";
-import { nowMicros } from "../lib/clock.mjs";
-import { openDb } from "../lib/db.mjs";
+} from "../lib/aggregate.ts";
+import { nowMicros } from "../lib/clock.ts";
+import { openDb } from "../lib/db.ts";
 import { insertMany } from "../lib/record.mjs";
-import { WAIT_TIER } from "../lib/tiers.mjs";
+import { WAIT_TIER } from "../lib/tiers.ts";
 
 async function seededDb() {
   const db = await openDb(":memory:");

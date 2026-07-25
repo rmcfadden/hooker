@@ -1,4 +1,6 @@
-const TIER_COLORS = {
+import type { GroupCol, Report, ReportGroup } from "./types.ts";
+
+const TIER_COLORS: Record<string, string> = {
   "claude-hook": "#6366f1",
   "claude-tool": "#0ea5e9",
   "claude-wait": "#a855f7",
@@ -6,7 +8,13 @@ const TIER_COLORS = {
   "github-action": "#10b981",
 };
 
-function escapeHtml(value) {
+interface BarItem {
+  label: string;
+  total: number;
+  tier: string | number | null | undefined;
+}
+
+function escapeHtml(value: unknown): string {
   return String(value)
     .replaceAll("&", "&amp;")
     .replaceAll("<", "&lt;")
@@ -15,7 +23,7 @@ function escapeHtml(value) {
 }
 
 /** Microseconds → human string (µs / ms / s), the report's canonical duration format. */
-export function formatDuration(us) {
+export function formatDuration(us: number): string {
   if (us < 1000) {
     return `${us} µs`;
   }
@@ -25,11 +33,11 @@ export function formatDuration(us) {
   return `${(us / 1_000_000).toFixed(2)} s`;
 }
 
-function tierColor(tier) {
-  return TIER_COLORS[tier] ?? "#94a3b8";
+function tierColor(tier: string | number | null | undefined): string {
+  return TIER_COLORS[String(tier)] ?? "#94a3b8";
 }
 
-function barChartSvg(items, width = 640, rowHeight = 22) {
+function barChartSvg(items: BarItem[], width = 640, rowHeight = 22): string {
   if (items.length === 0) {
     return "<p>No data.</p>";
   }
@@ -50,14 +58,14 @@ function barChartSvg(items, width = 640, rowHeight = 22) {
   return `<svg viewBox="0 0 ${width} ${items.length * rowHeight}" width="${width}" role="img">${bars}</svg>`;
 }
 
-function groupLabel(group, groupCols) {
+function groupLabel(group: ReportGroup, groupCols: GroupCol[]): string {
   return groupCols
     .map((col) => group[col])
     .filter((part) => part != null && part !== "")
     .join(" › ");
 }
 
-function summaryRows(groups, groupCols) {
+function summaryRows(groups: ReportGroup[], groupCols: GroupCol[]): string {
   return groups
     .map(
       (g) => `<tr>
@@ -72,7 +80,7 @@ function summaryRows(groups, groupCols) {
     .join("\n");
 }
 
-function topBars(groups, groupCols) {
+function topBars(groups: ReportGroup[], groupCols: GroupCol[]): BarItem[] {
   return groups.slice(0, 15).map((g) => ({
     label: groupLabel(g, groupCols),
     total: g.total,
@@ -88,14 +96,14 @@ td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
 .meta{color:#64748b}`;
 
 /** Human label for a report's window: a relative `last` span, else the from → to bounds. */
-export function rangeLabel(report) {
+export function rangeLabel(report: Report): string {
   if (report.last) {
     return `last ${report.last}`;
   }
   return `${report.from ?? "beginning"} → ${report.to ?? "now"}`;
 }
 
-function waitNote(report) {
+function waitNote(report: Report): string {
   if (report.wait.count === 0) {
     return "";
   }
@@ -105,7 +113,7 @@ function waitNote(report) {
 }
 
 /** Render the report payload from buildReport() into a self-contained HTML document. */
-export function renderReport(report) {
+export function renderReport(report: Report): string {
   const { groupCols, groups, totals } = report;
   const range = rangeLabel(report);
   return `<!doctype html><html><head><meta charset="utf-8">

@@ -1,11 +1,11 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { buildReport } from "../lib/aggregate.mjs";
-import { categorize } from "../lib/categories.mjs";
-import { openDb } from "../lib/db.mjs";
+import { buildReport } from "../lib/aggregate.ts";
+import { categorize } from "../lib/categories.ts";
+import { openDb } from "../lib/db.ts";
 import { generateEvents } from "../lib/mock.mjs";
 import { insertMany } from "../lib/record.mjs";
-import { isWaitTier } from "../lib/tiers.mjs";
+import { isWaitTier } from "../lib/tiers.ts";
 
 const NOW = 1_700_000_000_000_000; // fixed epoch µs so tests don't depend on the wall clock
 const WINDOW = 30 * 86_400_000_000; // 30 days in µs

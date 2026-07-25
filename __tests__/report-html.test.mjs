@@ -4,7 +4,7 @@ import {
   formatDuration,
   rangeLabel,
   renderReport,
-} from "../lib/report-html.mjs";
+} from "../lib/report-html.ts";
 
 test("formatDuration scales µs → ms → s", () => {
   assert.equal(formatDuration(500), "500 µs");
