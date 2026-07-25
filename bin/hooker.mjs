@@ -40,13 +40,13 @@ async function cmdInit() {
   const db = await openDb(dbPath());
   db.close();
   await mkdir(reportsDir(), { recursive: true });
-  out(`profile: initialized ${dbPath()}`);
+  out(`hooker: initialized ${dbPath()}`);
 }
 
 async function cmdReset() {
   const db = await resetDb(dbPath());
   db.close();
-  out(`profile: reset ${dbPath()} (dropped all events)`);
+  out(`hooker: reset ${dbPath()} (dropped all events)`);
 }
 
 function eventFromFlags(flags) {
@@ -85,7 +85,7 @@ async function cmdIngest(flags) {
   const db = await openDb(dbPath());
   const opts = { since: flags.since, repo: flags.repo };
   out(
-    `profile: ingested ${await ingestGithub(db, opts)} GitHub Actions events`,
+    `hooker: ingested ${await ingestGithub(db, opts)} GitHub Actions events`,
   );
   db.close();
 }
@@ -153,7 +153,7 @@ async function cmdReport(flags) {
     const slug = rangeLabel(report).replace(/[^\w.-]+/g, "_");
     const file = join(reportsDir(), `report-${slug}.html`);
     await writeFile(file, renderReport(report), "utf8");
-    out(`profile: wrote ${file}`);
+    out(`hooker: wrote ${file}`);
   } else {
     printReport(report, makePaint(colorEnabled(flags)));
   }
@@ -174,7 +174,7 @@ function cursorOpts(flags) {
 async function cmdInstall(flags) {
   if (isCursor(flags)) {
     out(
-      `profile: wired cursor recorders into ${await installCursor(cursorOpts(flags))}`,
+      `hooker: wired cursor recorders into ${await installCursor(cursorOpts(flags))}`,
     );
     return;
   }
@@ -184,14 +184,14 @@ async function cmdInstall(flags) {
     home: profileHome,
     wrapHooks: Boolean(flags["wrap-hooks"]),
   });
-  out(`profile: wired recorders into ${files.join(", ")}`);
+  out(`hooker: wired recorders into ${files.join(", ")}`);
 }
 
 async function cmdUpgrade(flags) {
   if (isCursor(flags)) {
     const file = await installCursor(cursorOpts(flags));
     out(
-      `profile: upgraded cursor — events=[${(await cursorStatus(cursorOpts(flags))).events.join(", ")}] in ${file}`,
+      `hooker: upgraded cursor — events=[${(await cursorStatus(cursorOpts(flags))).events.join(", ")}] in ${file}`,
     );
     return;
   }
@@ -205,7 +205,7 @@ async function cmdUpgrade(flags) {
   const info = await status({ target });
   const gitSteps = await gitHookStatus({ target });
   out(
-    `profile: upgraded — recorders=[${info.recorders.join(", ")}] wrapped-hooks=${info.wrapped} git-steps=${gitSteps}`,
+    `hooker: upgraded — recorders=[${info.recorders.join(", ")}] wrapped-hooks=${info.wrapped} git-steps=${gitSteps}`,
   );
 }
 
@@ -213,7 +213,7 @@ async function cmdInstallGit(flags) {
   const target = flags.target ?? process.cwd();
   const files = await wrapGitHooks({ target, home: profileHome });
   out(
-    `profile: wrapped git-hook steps in ${files.join(", ") || "(no git hooks found)"}`,
+    `hooker: wrapped git-hook steps in ${files.join(", ") || "(no git hooks found)"}`,
   );
 }
 
@@ -221,14 +221,14 @@ async function cmdUninstallGit(flags) {
   const target = flags.target ?? process.cwd();
   const files = await unwrapGitHooks({ target, home: profileHome });
   out(
-    `profile: unwrapped git hooks in ${files.join(", ") || "(no git hooks found)"}`,
+    `hooker: unwrapped git hooks in ${files.join(", ") || "(no git hooks found)"}`,
   );
 }
 
 async function cmdStatus(flags) {
   if (isCursor(flags)) {
     out(
-      `profile: cursor events=[${(await cursorStatus(cursorOpts(flags))).events.join(", ")}]`,
+      `hooker: cursor events=[${(await cursorStatus(cursorOpts(flags))).events.join(", ")}]`,
     );
     return;
   }
@@ -236,19 +236,19 @@ async function cmdStatus(flags) {
   const info = await status({ target });
   const gitSteps = await gitHookStatus({ target });
   out(
-    `profile: recorders=[${info.recorders.join(", ")}] wrapped-hooks=${info.wrapped} git-steps=${gitSteps}`,
+    `hooker: recorders=[${info.recorders.join(", ")}] wrapped-hooks=${info.wrapped} git-steps=${gitSteps}`,
   );
 }
 
 async function cmdUninstall(flags) {
   if (isCursor(flags)) {
     out(
-      `profile: removed cursor recorders from ${await uninstallCursor(cursorOpts(flags))}`,
+      `hooker: removed cursor recorders from ${await uninstallCursor(cursorOpts(flags))}`,
     );
     return;
   }
   const files = await uninstall({ target: flags.target ?? process.cwd() });
-  out(`profile: removed profile entries from ${files.join(", ")}`);
+  out(`hooker: removed profile entries from ${files.join(", ")}`);
 }
 
 const COMMANDS = {
@@ -271,7 +271,7 @@ async function main() {
   const command = COMMANDS[positional[0]];
   if (!command) {
     out(
-      "usage: profile <init|reset|record|ingest|report|install|upgrade|update|uninstall|install-git|uninstall-git|status> [flags]",
+      "usage: hooker <init|reset|record|ingest|report|install|upgrade|update|uninstall|install-git|uninstall-git|status> [flags]",
     );
     process.exitCode = positional[0] ? 1 : 0;
     return;
@@ -280,6 +280,6 @@ async function main() {
 }
 
 main().catch((err) => {
-  process.stderr.write(`profile: ${err.stack ?? err}\n`);
+  process.stderr.write(`hooker: ${err.stack ?? err}\n`);
   process.exit(1);
 });
