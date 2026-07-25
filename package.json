@@ -17,6 +17,12 @@
   },
   "scripts": {
     "test": "node --test",
-    "coverage": "node --test --experimental-test-coverage --test-coverage-lines=0.95 --test-coverage-functions=0.95"
+    "coverage": "node --test --experimental-test-coverage --test-coverage-lines=0.95 --test-coverage-functions=0.95",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "build": "tsc -p tsconfig.build.json"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.1",
+    "typescript": "^5.9.3"
   }
 }

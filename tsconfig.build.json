@@ -1,0 +1,14 @@
+{
+  // Emit config used for publishing: compiles lib/ + bin/ to dist/ with declarations + sourcemaps.
+  // Tests are excluded from the shipped build; they run directly via Node's type-stripping.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "outDir": "dist",
+    "rootDir": ".",
+    "declaration": true,
+    "sourceMap": true
+  },
+  "include": ["lib/**/*", "bin/**/*"],
+  "exclude": ["node_modules", "dist", "web", "__tests__"]
+}
