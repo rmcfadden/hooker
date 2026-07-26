@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
 import { openDb } from "../lib/db.ts";
-import { insertMany, recordMarker } from "../lib/record.mjs";
+import { insertMany, recordMarker } from "../lib/record.ts";
 
 async function freshDb() {
   const dir = await mkdtemp(join(tmpdir(), "hooker-record-"));

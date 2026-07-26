@@ -3,8 +3,8 @@ import { test } from "node:test";
 import { buildReport } from "../lib/aggregate.ts";
 import { categorize } from "../lib/categories.ts";
 import { openDb } from "../lib/db.ts";
-import { generateEvents } from "../lib/mock.mjs";
-import { insertMany } from "../lib/record.mjs";
+import { generateEvents } from "../lib/mock.ts";
+import { insertMany } from "../lib/record.ts";
 import { isWaitTier } from "../lib/tiers.ts";
 
 const NOW = 1_700_000_000_000_000; // fixed epoch µs so tests don't depend on the wall clock

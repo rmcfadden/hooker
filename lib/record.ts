@@ -1,10 +1,11 @@
-import { toEvents } from "./command-label.mjs";
+import { toEvents } from "./command-label.ts";
+import type { Db, EventInput, MarkerEvent, Tier } from "./types.ts";
 
 const INSERT_EVENT = `INSERT OR IGNORE INTO event (start, "end", tier, hook, command, subcommand, status, source_key)
   VALUES (?, ?, ?, ?, ?, ?, ?, ?)`;
 
 /** Insert one completed event; ignored when its source_key already exists (idempotent re-ingest). */
-export function insertEvent(db, ev) {
+export function insertEvent(db: Db, ev: EventInput): void {
   db.prepare(INSERT_EVENT).run(
     ev.start,
     ev.end,
@@ -18,7 +19,7 @@ export function insertEvent(db, ev) {
 }
 
 /** Insert many events in one transaction, rolling back on any failure. Returns the count. */
-export function insertMany(db, events) {
+export function insertMany(db: Db, events: EventInput[]): number {
   db.exec("BEGIN");
   try {
     for (const ev of events) {
@@ -32,13 +33,31 @@ export function insertMany(db, events) {
   return events.length;
 }
 
+/** Arguments for {@link recordSplit}: a raw activity to derive and insert. */
+export interface RecordSplitArgs {
+  tier: Tier;
+  hook: string;
+  source: string;
+  start: number;
+  end: number;
+  status?: string | null | undefined;
+}
+
 /** Insert a completed activity, deriving command/subcommand (and Bash &&-split) from its raw source. */
-export function recordSplit(db, { tier, hook, source, start, end, status }) {
+export function recordSplit(db: Db, { tier, hook, source, start, end, status }: RecordSplitArgs): number {
   return insertMany(db, toEvents({ tier, hook, source, start, end, status }));
 }
 
+/** One row of the `pending` table — a pre marker awaiting its post. */
+interface PendingRow {
+  tier: string;
+  hook: string;
+  command: string;
+  start: number;
+}
+
 /** Direct-SQLite pre/post pairing via the pending table (needs a stable corr, e.g. tool_use_id). */
-export function recordMarker(db, marker) {
+export function recordMarker(db: Db, marker: MarkerEvent): boolean {
   if (marker.phase === "pre") {
     db.prepare(
       "INSERT OR REPLACE INTO pending (corr, tier, hook, command, start) VALUES (?, ?, ?, ?, ?)",
@@ -47,7 +66,7 @@ export function recordMarker(db, marker) {
   }
   const pre = db
     .prepare("SELECT tier, hook, command, start FROM pending WHERE corr = ?")
-    .get(marker.corr);
+    .get(marker.corr) as PendingRow | undefined;
   if (!pre) {
     return false;
   }

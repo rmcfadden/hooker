@@ -4,8 +4,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
 import { openDb } from "../lib/db.ts";
-import { insertMany } from "../lib/record.mjs";
-import { serve } from "../lib/serve.mjs";
+import { insertMany } from "../lib/record.ts";
+import { serve } from "../lib/serve.ts";
 
 async function seededServer() {
   const dir = await mkdtemp(join(tmpdir(), "hooker-serve-"));

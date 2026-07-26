@@ -17,7 +17,7 @@ const WRAPPED_LINE = /^(\s*)_pf \S+ \S+ (.*)$/;
  * profile-step.sh when it exists, else runs the raw command. Keeps shared .git/hooks safe
  * across worktrees that predate profile/.
  */
-function preamble(rel) {
+function preamble(rel: string): string {
   const script = `"$ROOT/${rel}/profile-step.sh"`;
   return [
     PREAMBLE_START,
@@ -27,21 +27,21 @@ function preamble(rel) {
 }
 
 /** Short label for a git-hook step: the lint script stem, or the `npm run <script>` name. */
-export function gitLabel(command) {
+export function gitLabel(command: string): string {
   const npm = command.match(/npm\s+run\s+(\S+)/);
   if (npm) {
-    return npm[1];
+    return npm[1] ?? "step";
   }
   const file = command.match(/([\w.-]+)\.(?:mjs|js|cjs)\b/);
-  return file ? file[1] : "step";
+  return file?.[1] ?? "step";
 }
 
 /** Route one hook step through the `_pf` shim; pass through non-steps and already-wrapped lines. */
-export function wrapStep(line, hookName) {
+export function wrapStep(line: string, hookName: string): string {
   if (!STEP_LINE.test(line) || line.trimStart().startsWith("_pf ")) {
     return line;
   }
-  const indent = line.match(/^\s*/)[0];
+  const indent = line.match(/^\s*/)?.[0] ?? "";
   const body = line.slice(indent.length);
   const suffix = body.match(EXIT_SUFFIX)?.[1] ?? "";
   const command = suffix ? body.slice(0, body.length - suffix.length) : body;
@@ -49,12 +49,12 @@ export function wrapStep(line, hookName) {
 }
 
 /** Reverse wrapStep, restoring the original step command. */
-export function unwrapStep(line) {
+export function unwrapStep(line: string): string {
   const match = line.match(WRAPPED_LINE);
-  return match ? `${match[1]}${match[2]}` : line;
+  return match ? `${match[1] ?? ""}${match[2] ?? ""}` : line;
 }
 
-function injectPreamble(lines, rel) {
+function injectPreamble(lines: string[], rel: string): string[] {
   if (lines.some((line) => line.includes(PREAMBLE_START))) {
     return lines;
   }
@@ -64,15 +64,15 @@ function injectPreamble(lines, rel) {
 }
 
 /** Inject the shim + route every step through it (idempotent). */
-export function wrapHookText(text, hookName, rel) {
+export function wrapHookText(text: string, hookName: string, rel: string): string {
   return injectPreamble(text.split("\n"), rel)
     .map((line) => wrapStep(line, hookName))
     .join("\n");
 }
 
 /** Drop the shim block + unwrap every routed step, restoring the original hook. */
-export function unwrapHookText(text) {
-  const kept = [];
+export function unwrapHookText(text: string): string {
+  const kept: string[] = [];
   let inBlock = false;
   for (const line of text.split("\n")) {
     if (line.includes(PREAMBLE_START)) {
@@ -87,11 +87,11 @@ export function unwrapHookText(text) {
 }
 
 /** Resolve `git rev-parse --git-path hooks` output against target — it may be relative or absolute. */
-export function resolveHooksDir(target, gitPathOutput) {
+export function resolveHooksDir(target: string, gitPathOutput: string): string {
   return resolve(target, gitPathOutput.trim());
 }
 
-async function gitHooksPath(target) {
+async function gitHooksPath(target: string): Promise<string> {
   const stdout = await execFileAsync("git", ["rev-parse", "--git-path", "hooks"], {
     cwd: target,
     encoding: "utf8",
@@ -99,8 +99,8 @@ async function gitHooksPath(target) {
   return resolveHooksDir(target, stdout);
 }
 
-async function readMaybe(file) {
-  return readFile(file, "utf8").catch((err) => {
+async function readMaybe(file: string): Promise<string | null> {
+  return readFile(file, "utf8").catch((err: NodeJS.ErrnoException) => {
     if (err.code === "ENOENT") {
       return null;
     }
@@ -108,9 +108,11 @@ async function readMaybe(file) {
   });
 }
 
-async function transformHooks(target, rel, transform) {
+type HookTransform = (text: string, name: string) => string;
+
+async function transformHooks(target: string, transform: HookTransform): Promise<string[]> {
   const dir = await gitHooksPath(target);
-  const written = [];
+  const written: string[] = [];
   for (const name of GIT_HOOKS) {
     const file = join(dir, name);
     const text = await readMaybe(file);
@@ -125,18 +127,18 @@ async function transformHooks(target, rel, transform) {
 }
 
 /** Route every step in the local pre-commit/pre-push through the profile shim (idempotent). */
-export async function wrapGitHooks({ target, home }) {
+export async function wrapGitHooks({ target, home }: { target: string; home: string }): Promise<string[]> {
   const rel = relative(target, hooksDir(home));
-  return transformHooks(target, rel, (text, name) => wrapHookText(text, name, rel));
+  return transformHooks(target, (text, name) => wrapHookText(text, name, rel));
 }
 
 /** Remove the profile shim + step routing from the local git hooks. */
-export async function unwrapGitHooks({ target }) {
-  return transformHooks(target, null, (text) => unwrapHookText(text));
+export async function unwrapGitHooks({ target }: { target: string }): Promise<string[]> {
+  return transformHooks(target, (text) => unwrapHookText(text));
 }
 
 /** Count routed steps across the local git hooks (for `status`). */
-export async function gitHookStatus({ target }) {
+export async function gitHookStatus({ target }: { target: string }): Promise<number> {
   const dir = await gitHooksPath(target);
   let steps = 0;
   for (const name of GIT_HOOKS) {
