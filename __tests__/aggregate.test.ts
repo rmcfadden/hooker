@@ -10,6 +10,7 @@ import { nowMicros } from "../lib/clock.ts";
 import { openDb } from "../lib/db.ts";
 import { insertMany } from "../lib/record.ts";
 import { WAIT_TIER } from "../lib/tiers.ts";
+import type { CategorizedRow } from "../lib/types.ts";
 
 async function seededDb() {
   const db = await openDb(":memory:");
@@ -84,9 +85,10 @@ test("aggregate groups and totals with failure counts", () => {
       status: "success",
     },
   ];
-  const groups = aggregate(rows);
+  const groups = aggregate(rows as unknown as CategorizedRow[]);
   assert.equal(groups.length, 2);
   const lint = groups.find((g) => g.command === "lint");
+  assert.ok(lint);
   assert.equal(lint.count, 2);
   assert.equal(lint.total, 400);
   assert.equal(lint.avg, 200);
@@ -110,7 +112,7 @@ test("aggregate honors a custom grouping", () => {
       status: "success",
     },
   ];
-  const groups = aggregate(rows, ["tier"]);
+  const groups = aggregate(rows as unknown as CategorizedRow[], ["tier"]);
   assert.equal(groups.length, 1);
   assert.equal(groups[0].total, 3);
 });

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { eventsIn, runHook as run, script, tempDataDir } from "./hook-harness.mjs";
+import { eventsIn, runHook as run, script, tempDataDir } from "./hook-harness.ts";
 
 const dataDir = () => tempDataDir("hooks");
 

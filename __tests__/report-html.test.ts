@@ -27,6 +27,7 @@ test("renderReport emits a self-contained document with totals, table and chart"
   const report = {
     from: "2026-07-01",
     to: "2026-07-02",
+    last: undefined,
     includeWait: false,
     groupCols: ["tier", "hook", "command"],
     groups: [
@@ -54,8 +55,9 @@ test("renderReport emits a self-contained document with totals, table and chart"
 
 test("renderReport notes excluded wait time and points to the include flag", () => {
   const html = renderReport({
-    from: null,
-    to: null,
+    from: undefined,
+    to: undefined,
+    last: undefined,
     includeWait: false,
     groupCols: ["tier"],
     groups: [],
@@ -68,8 +70,9 @@ test("renderReport notes excluded wait time and points to the include flag", () 
 
 test("renderReport escapes HTML in group labels", () => {
   const html = renderReport({
-    from: null,
-    to: null,
+    from: undefined,
+    to: undefined,
+    last: undefined,
     includeWait: false,
     groupCols: ["command"],
     groups: [

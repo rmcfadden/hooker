@@ -27,13 +27,17 @@ export interface EventInput {
   sourceKey?: string | null;
 }
 
-/** A pre/post marker paired through the `pending` table (Direct-SQLite recorder path). */
+/**
+ * A pre/post marker paired through the `pending` table (Direct-SQLite recorder path). A `pre`
+ * marker carries tier/hook/command; a `post` marker only needs corr/ts/status (the rest is read
+ * back from the pending row), so those are optional.
+ */
 export interface MarkerEvent {
   phase: "pre" | "post";
   corr: string;
-  tier: Tier;
-  hook: string;
-  command: string;
+  tier?: Tier;
+  hook?: string;
+  command?: string;
   raw?: string;
   ts: number;
   status?: string | null;

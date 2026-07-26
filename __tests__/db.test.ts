@@ -22,7 +22,7 @@ test("openDb is idempotent and creates the schema", async () => {
 test("insertEvent stores computable elapsed", async () => {
   const db = await openDb(":memory:");
   insertEvent(db, sample);
-  const row = db.prepare(`SELECT "end" - start AS elapsed FROM event`).get();
+  const row = db.prepare(`SELECT "end" - start AS elapsed FROM event`).get() as { elapsed: number };
   assert.equal(row.elapsed, 500);
   db.close();
 });
@@ -39,7 +39,7 @@ test("source_key dedupes on re-insert", async () => {
   const db = await openDb(":memory:");
   const ev = { ...sample, sourceKey: "run/1/2" };
   insertMany(db, [ev, ev]);
-  const row = db.prepare("SELECT COUNT(*) AS n FROM event").get();
+  const row = db.prepare("SELECT COUNT(*) AS n FROM event").get() as { n: number };
   assert.equal(row.n, 1);
   db.close();
 });

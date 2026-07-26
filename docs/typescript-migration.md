@@ -3,6 +3,9 @@
 Migrate the backend (`lib/`, `bin/`, `__tests__/` — ~2000 LOC of `.mjs`) to strict TypeScript.
 The `web/` app is already strict TS and is out of scope.
 
+**Status: complete.** All source and tests are TypeScript; `allowJs` is off; publishing ships
+compiled `dist/`. See the per-phase checklist below.
+
 ## Decisions
 
 - **Ship:** source stays in `lib/`/`bin/` as `.ts`; `tsc` emits parallel JS to `dist/`, which is what
@@ -50,10 +53,14 @@ Entry point (depends on nearly everything): `bin/hooker`.
   existing `.mjs`: typecheck, build, all 115 tests, and the compiled CLI all pass.
 - **Phase 1 — Shared types + leaves.** Author `lib/types.ts`; convert the dependency-free leaves.
 - **Phase 2 — Mid-tier.** Convert the modules above in dependency order.
-- **Phase 3 — Entry point.** Convert `bin/hooker.ts` (keep the `#!/usr/bin/env node` shebang; the
-  existing `setWriter`/`main` seams carry over).
-- **Phase 4 — Tests + tighten.** Convert `__tests__/*.mjs` → `.ts`, turn **off** `allowJs`, point
-  `bin`/`files` at `dist/`, add `prepublishOnly`, and wire `typecheck` into CI.
+- **Phase 3 — Entry point (done).** Converted `bin/hooker.ts` (kept the `#!/usr/bin/env node`
+  shebang; the `setWriter`/`main` seams carried over; `str()`/`strOpt()` flag coercion).
+- **Phase 4 — Tests + tighten (done).** Converted `__tests__/*.mjs` → `.ts`, turned **off**
+  `allowJs`, pointed `bin`/`files` at `dist/`, added `prepublishOnly` (+ `scripts/postbuild.ts`
+  which copies the recorder hooks into `dist/` and repoints them at the compiled CLI). Tests use a
+  dedicated `tsconfig.test.json` that keeps `strict` but relaxes `noUncheckedIndexedAccess` /
+  `exactOptionalPropertyTypes` — the two extras that add noise to assertion-heavy test code poking
+  at deliberately loose data (SQLite rows, parsed JSON).
 
 ## Shared types to define (`lib/types.ts`)
 

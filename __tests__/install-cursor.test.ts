@@ -9,7 +9,7 @@ async function tempTarget() {
   return mkdtemp(join(tmpdir(), "profile-cursor-"));
 }
 
-async function readHooks(target) {
+async function readHooks(target: string) {
   return JSON.parse(await readFile(join(target, ".cursor", "hooks.json"), "utf8"));
 }
 
@@ -21,7 +21,7 @@ test("installCursor writes hooks.json v1 with a profile recorder on every event"
   const config = await readHooks(target);
   assert.equal(config.version, 1);
   for (const event of EVENTS) {
-    const entries = config.hooks[event].filter((e) => e.command.includes("profile/hooks/cursor-"));
+    const entries = config.hooks[event].filter((e: { command: string }) => e.command.includes("profile/hooks/cursor-"));
     assert.equal(entries.length, 1, `expected one profile entry on ${event}`);
   }
   assert.deepEqual((await cursorStatus({ target })).events.sort(), [...EVENTS].sort());
@@ -41,8 +41,8 @@ test("installCursor is idempotent and preserves the user's own hooks", async () 
   await installCursor({ target, home: join(target, "profile") });
   const config = await readHooks(target);
   const shell = config.hooks.beforeShellExecution;
-  assert.equal(shell.filter((e) => e.command.includes("profile/hooks/cursor-")).length, 1);
-  assert.ok(shell.some((e) => e.command === "bash my-guard.sh"));
+  assert.equal(shell.filter((e: { command: string }) => e.command.includes("profile/hooks/cursor-")).length, 1);
+  assert.ok(shell.some((e: { command: string }) => e.command === "bash my-guard.sh"));
 });
 
 test("uninstallCursor removes only the profile recorders", async () => {
