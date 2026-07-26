@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, realpath, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { parseFlags } from "../lib/args.ts";
@@ -382,7 +382,12 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<unkn
 }
 
 // Only auto-run when executed as the CLI entry point, so tests can import main().
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+// argv[1] is the launch path — a symlink under npm global-bin / `npm link` — but import.meta.url
+// is the resolved real path, so they never match without realpath and main() silently never runs.
+const entryHref = process.argv[1]
+  ? pathToFileURL(await realpath(process.argv[1])).href
+  : undefined;
+if (entryHref === import.meta.url) {
   main().catch((err: unknown) => {
     const detail = err instanceof Error ? (err.stack ?? err.message) : String(err);
     process.stderr.write(`hooker: ${detail}\n`);
