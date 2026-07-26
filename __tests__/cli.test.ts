@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
 import { main, setWriter } from "../bin/hooker.ts";
+import { nowMicros } from "../lib/clock.ts";
 import { openDb } from "../lib/db.ts";
 import { withFakeGh } from "./fake-gh.ts";
 
@@ -128,6 +129,50 @@ test("hooker CLI", async (t) => {
     assert.ok(row, "expected the pre/post markers to pair into one event");
     assert.equal(row.end - row.start, 400);
     assert.equal(pending, 0, "the pending row should be consumed on pairing");
+  });
+
+  await t.test("disable makes record a no-op; enable resumes it", async () => {
+    const before = await eventCount();
+    assert.match((await run("disable")).out, /recording disabled/);
+    await run(
+      "record", "--tier", "claude-tool", "--hook", "PostToolUse",
+      "--command", "Bash", "--start", "1000", "--end", "1500",
+    );
+    assert.equal(await eventCount(), before, "record should not insert while disabled");
+    assert.match((await run("status")).out, /recording=disabled/);
+
+    assert.match((await run("enable")).out, /recording enabled/);
+    await run(
+      "record", "--tier", "claude-tool", "--hook", "PostToolUse",
+      "--command", "Bash", "--start", "1000", "--end", "1500",
+    );
+    assert.equal(await eventCount(), before + 1, "record should insert once re-enabled");
+    assert.match((await run("status")).out, /recording=enabled/);
+  });
+
+  await t.test("cleanup removes events older than the given span", async () => {
+    await run("reset");
+    const now = nowMicros();
+    await run(
+      "record", "--tier", "claude-tool", "--hook", "PostToolUse",
+      "--command", "Bash", "--start", "1000", "--end", "1500",
+    ); // ancient (epoch µs ≈ 1970)
+    await run(
+      "record", "--tier", "claude-tool", "--hook", "PostToolUse",
+      "--command", "Bash", "--start", String(now), "--end", String(now + 500),
+    ); // fresh
+    assert.equal(await eventCount(), 2);
+    const { out } = await run("cleanup", "--older-than", "1d");
+    assert.match(out, /removed 1 events older than 1d/);
+    assert.equal(await eventCount(), 1);
+  });
+
+  await t.test("cleanup without a span errors and exits 1", async () => {
+    process.exitCode = 0;
+    const { out } = await run("cleanup");
+    assert.match(out, /cleanup needs --older-than/);
+    assert.equal(process.exitCode, 1);
+    process.exitCode = 0;
   });
 
   await t.test("ingest pulls GitHub Actions timings via the gh CLI", async () => {

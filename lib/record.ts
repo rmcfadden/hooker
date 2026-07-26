@@ -35,6 +35,13 @@ export function insertMany(db: Db, events: EventInput[]): number {
   return events.length;
 }
 
+/** Delete completed events and stale pending markers that started before cutoffMicros; returns events removed. */
+export function deleteOlderThan(db: Db, cutoffMicros: number): number {
+  const { changes } = db.prepare("DELETE FROM event WHERE start < ?").run(cutoffMicros);
+  db.prepare("DELETE FROM pending WHERE start < ?").run(cutoffMicros);
+  return Number(changes);
+}
+
 /** Arguments for {@link recordSplit}: a raw activity to derive and insert. */
 export interface RecordSplitArgs {
   tier: Tier;

@@ -64,6 +64,8 @@ non-blocking (Cursor only enforces `deny`; they emit `allow`).
 
 ```
 hooker init | reset               # create / drop+recreate the SQLite DB
+hooker enable | disable            # turn recording on/off (all recorders no-op while disabled)
+hooker cleanup --older-than 30d                          # delete events older than a span (30d/2w/…), then VACUUM
 hooker ingest --github --since 2026-07-01                 # pull GitHub Actions timings
 hooker report --from 2026-07-01 --to 2026-07-22           # whole-day range (wait tier excluded)
 hooker report --from 2026-07-22T14:00:00 --to 2026-07-22T14:30:00   # second-precise slice
@@ -143,6 +145,12 @@ call's start lands in the `pending` table (PreToolUse) and is paired + split int
 offline ingest step (only GitHub timings are pulled on demand). `hooker install` adds the
 two tool recorders to `.claude/settings.local.json` and, with `--wrap-hooks`, wraps existing
 hooks in `.claude/settings.json` for self-timing (transparent — stdout and exit preserved).
+
+**Pause & prune.** `hooker disable` writes `enabled: false` to a project-local `.profile/state.json`;
+every recorder funnels through `hooker record`, which becomes a no-op while disabled (the hooks stay
+wired — nothing to re-install), and `hooker enable` resumes. `hooker status` shows the current
+`recording=` state. `hooker cleanup --older-than <span>` deletes `event` rows whose start predates the
+span (same `30d`/`2w`/`hour` grammar as `report --last`) and reclaims the freed space with `VACUUM`.
 
 `hooker install-git` wraps each step in the local `.git/hooks/pre-commit`/`pre-push` with
 `hooks/profile-step.sh` in place (idempotent, reversible via `uninstall-git`), so every lint

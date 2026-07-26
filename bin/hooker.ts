@@ -10,11 +10,13 @@ import { ingestGithub } from "../lib/github.ts";
 import { generateEvents } from "../lib/mock.ts";
 import { dbPath, profileHome, reportsDir } from "../lib/paths.ts";
 import {
+  deleteOlderThan,
   insertEvent,
   insertMany,
   recordMarker,
   recordSplit,
 } from "../lib/record.ts";
+import { isRecordingEnabled, setRecordingEnabled } from "../lib/state.ts";
 import {
   formatDuration,
   rangeLabel,
@@ -80,6 +82,10 @@ async function cmdReset(): Promise<void> {
 }
 
 async function cmdRecord(flags: Flags): Promise<void> {
+  // Single gate for every recorder — tool/hook/git/cursor scripts all shell out to `hooker record`.
+  if (!(await isRecordingEnabled())) {
+    return;
+  }
   const tier = str(flags.tier);
   const hook = str(flags.hook);
   const command = str(flags.command);
@@ -124,6 +130,31 @@ async function cmdRecord(flags: Flags): Promise<void> {
     });
   }
   db.close();
+}
+
+async function cmdEnable(): Promise<void> {
+  await setRecordingEnabled(true);
+  out("hooker: recording enabled");
+}
+
+async function cmdDisable(): Promise<void> {
+  await setRecordingEnabled(false);
+  out("hooker: recording disabled — run 'hooker enable' to resume");
+}
+
+async function cmdCleanup(flags: Flags): Promise<void> {
+  const span = strOpt(flags["older-than"]) ?? strOpt(flags.last);
+  if (!span) {
+    out("hooker: cleanup needs --older-than <span> (e.g. 30d, 2w)");
+    process.exitCode = 1;
+    return;
+  }
+  const cutoff = nowMicros() - durationMicros(span);
+  const db = await openDb(dbPath());
+  const removed = deleteOlderThan(db, cutoff);
+  db.exec("VACUUM");
+  db.close();
+  out(`hooker: removed ${removed} events older than ${span}`);
 }
 
 async function cmdIngest(flags: Flags): Promise<void> {
@@ -299,8 +330,9 @@ async function cmdStatus(flags: Flags): Promise<void> {
   const target = strOpt(flags.target) ?? process.cwd();
   const info = await status({ target });
   const gitSteps = await gitHookStatus({ target });
+  const recording = (await isRecordingEnabled()) ? "enabled" : "disabled";
   out(
-    `hooker: recorders=[${info.recorders.join(", ")}] wrapped-hooks=${info.wrapped} git-steps=${gitSteps}`,
+    `hooker: recording=${recording} recorders=[${info.recorders.join(", ")}] wrapped-hooks=${info.wrapped} git-steps=${gitSteps}`,
   );
 }
 
@@ -319,6 +351,9 @@ const COMMANDS: Record<string, Handler> = {
   init: cmdInit,
   reset: cmdReset,
   record: cmdRecord,
+  enable: cmdEnable,
+  disable: cmdDisable,
+  cleanup: cmdCleanup,
   ingest: cmdIngest,
   mock: cmdMock,
   report: cmdReport,
@@ -338,7 +373,7 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<unkn
   const command = name ? COMMANDS[name] : undefined;
   if (!command) {
     out(
-      "usage: hooker <init|reset|record|ingest|mock|report|serve|install|upgrade|update|uninstall|install-git|uninstall-git|status> [flags]",
+      "usage: hooker <init|reset|record|enable|disable|cleanup|ingest|mock|report|serve|install|upgrade|update|uninstall|install-git|uninstall-git|status> [flags]",
     );
     process.exitCode = name ? 1 : 0;
     return;

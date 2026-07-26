@@ -18,7 +18,7 @@
     "coverage": "node --test --experimental-test-coverage --test-coverage-lines=0.95 --test-coverage-functions=0.95",
     "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.test.json",
     "build": "tsc -p tsconfig.build.json && node scripts/postbuild.ts",
-    "prepublishOnly": "npm run build"
+    "prepare": "npm run build"
   },
   "devDependencies": {
     "@types/node": "^22.20.1",
