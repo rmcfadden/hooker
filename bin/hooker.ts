@@ -254,11 +254,14 @@ async function cmdReport(flags: Flags): Promise<void> {
 }
 
 async function cmdServe(flags: Flags): Promise<{ server: import("node:http").Server; url: string }> {
+  const control = Boolean(flags.control);
   const result = await serve({
     port: flags.port != null ? Number(flags.port) : undefined,
     host: strOpt(flags.host),
+    control,
   });
-  out(`hooker: serving report UI + API at ${result.url} (Ctrl-C to stop)`);
+  const note = control ? "control API enabled; " : "";
+  out(`hooker: serving report UI + API at ${result.url} (${note}Ctrl-C to stop)`);
   return result;
 }
 

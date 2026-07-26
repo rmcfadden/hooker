@@ -15,7 +15,7 @@ interface MetaResponse {
   count: number;
 }
 
-async function seededServer() {
+async function seededDb(): Promise<string> {
   const dir = await mkdtemp(join(tmpdir(), "hooker-serve-"));
   const path = join(dir, "profile.db");
   const db = await openDb(path);
@@ -24,8 +24,21 @@ async function seededServer() {
     { start: 2000, end: 2500, tier: "git-hook", hook: "pre-commit", command: "lint", status: "fail" },
   ]);
   db.close();
-  // port 0 → the OS assigns a free port, returned in the url.
-  return serve({ path, port: 0 });
+  return path;
+}
+
+// port 0 → the OS assigns a free port, returned in the url. Each server gets its own temp dir, so
+// its state.json (written by the control routes) is isolated from other tests and the process.
+async function seededServer() {
+  return serve({ path: await seededDb(), port: 0 });
+}
+
+async function controlServer() {
+  return serve({ path: await seededDb(), port: 0, control: true });
+}
+
+interface StatusResponse extends MetaResponse {
+  recording: boolean;
 }
 
 test("GET /api/report aggregates events and honors the group param", async () => {
@@ -107,6 +120,77 @@ test("an unknown non-API path falls back to index.html (client-side routing)", a
     const res = await fetch(`${url}/some/deep/spa/route`);
     assert.equal(res.status, 200);
     assert.match(res.headers.get("content-type") ?? "",/text\/html/);
+  } finally {
+    server.close();
+  }
+});
+
+test("GET /api/status reports the recording flag alongside the event span", async () => {
+  const { server, url } = await seededServer();
+  try {
+    const status = (await (await fetch(`${url}/api/status`)).json()) as StatusResponse;
+    assert.equal(status.recording, true);
+    assert.equal(status.count, 2);
+    assert.equal(status.min, 1000);
+    assert.equal(status.max, 2500);
+  } finally {
+    server.close();
+  }
+});
+
+test("control routes 404 unless the server was started with control", async () => {
+  const { server, url } = await seededServer();
+  try {
+    for (const route of ["enable", "disable"]) {
+      const res = await fetch(`${url}/api/${route}`, { method: "POST" });
+      assert.equal(res.status, 404);
+      assert.match(((await res.json()) as { error: string }).error, /no route/);
+    }
+  } finally {
+    server.close();
+  }
+});
+
+test("with --control, POST enable/disable toggles recording and status reflects it", async () => {
+  const { server, url } = await controlServer();
+  try {
+    const disable = await fetch(`${url}/api/disable`, { method: "POST" });
+    assert.equal(disable.status, 200);
+    assert.equal(((await disable.json()) as { recording: boolean }).recording, false);
+    assert.equal(
+      ((await (await fetch(`${url}/api/status`)).json()) as StatusResponse).recording,
+      false,
+    );
+
+    const enable = await fetch(`${url}/api/enable`, { method: "POST" });
+    assert.equal(((await enable.json()) as { recording: boolean }).recording, true);
+    assert.equal(
+      ((await (await fetch(`${url}/api/status`)).json()) as StatusResponse).recording,
+      true,
+    );
+  } finally {
+    server.close();
+  }
+});
+
+test("a control route rejects the wrong method with 405", async () => {
+  const { server, url } = await controlServer();
+  try {
+    const res = await fetch(`${url}/api/enable`);
+    assert.equal(res.status, 405);
+    assert.match(((await res.json()) as { error: string }).error, /use POST/);
+  } finally {
+    server.close();
+  }
+});
+
+test("OPTIONS preflight on /api answers 204 with open CORS", async () => {
+  const { server, url } = await seededServer();
+  try {
+    const res = await fetch(`${url}/api/report`, { method: "OPTIONS" });
+    assert.equal(res.status, 204);
+    assert.equal(res.headers.get("access-control-allow-origin"), "*");
+    assert.match(res.headers.get("access-control-allow-methods") ?? "", /POST/);
   } finally {
     server.close();
   }
