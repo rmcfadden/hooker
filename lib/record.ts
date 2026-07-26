@@ -1,8 +1,8 @@
 import { toEvents } from "./command-label.ts";
-import type { Db, EventInput, MarkerEvent, Tier } from "./types.ts";
+import type { Db, EventInput, MarkerEvent, TokenType, Tier } from "./types.ts";
 
-const INSERT_EVENT = `INSERT OR IGNORE INTO event (start, "end", tier, hook, command, subcommand, status, source_key)
-  VALUES (?, ?, ?, ?, ?, ?, ?, ?)`;
+const INSERT_EVENT = `INSERT OR IGNORE INTO event (start, "end", tier, hook, command, subcommand, status, source_key, tokens, token_type)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
 
 /** Insert one completed event; ignored when its source_key already exists (idempotent re-ingest). */
 export function insertEvent(db: Db, ev: EventInput): void {
@@ -15,6 +15,8 @@ export function insertEvent(db: Db, ev: EventInput): void {
     ev.subcommand ?? null,
     ev.status ?? null,
     ev.sourceKey ?? null,
+    ev.tokens ?? 0,
+    ev.tokenType ?? "none",
   );
 }
 
@@ -41,11 +43,16 @@ export interface RecordSplitArgs {
   start: number;
   end: number;
   status?: string | null | undefined;
+  tokens?: number | null | undefined;
+  tokenType?: TokenType | null | undefined;
 }
 
 /** Insert a completed activity, deriving command/subcommand (and Bash &&-split) from its raw source. */
-export function recordSplit(db: Db, { tier, hook, source, start, end, status }: RecordSplitArgs): number {
-  return insertMany(db, toEvents({ tier, hook, source, start, end, status }));
+export function recordSplit(
+  db: Db,
+  { tier, hook, source, start, end, status, tokens, tokenType }: RecordSplitArgs,
+): number {
+  return insertMany(db, toEvents({ tier, hook, source, start, end, status, tokens, tokenType }));
 }
 
 /** One row of the `pending` table — a pre marker awaiting its post. */
@@ -84,6 +91,8 @@ export function recordMarker(db: Db, marker: MarkerEvent): boolean {
     start: pre.start,
     end: marker.ts,
     status: marker.status,
+    tokens: marker.tokens,
+    tokenType: marker.tokenType,
   });
   for (const ev of events) {
     insertEvent(db, ev);

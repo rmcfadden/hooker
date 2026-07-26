@@ -18,7 +18,9 @@ CREATE TABLE IF NOT EXISTS event (
   command    TEXT    NOT NULL,
   subcommand TEXT,
   status     TEXT,
-  source_key TEXT
+  source_key TEXT,
+  tokens     INTEGER NOT NULL DEFAULT 0,
+  token_type TEXT    NOT NULL DEFAULT 'none'
 );
 CREATE UNIQUE INDEX IF NOT EXISTS event_dedupe ON event(source_key) WHERE source_key IS NOT NULL;
 CREATE INDEX IF NOT EXISTS event_start ON event(start);
@@ -31,6 +33,24 @@ CREATE TABLE IF NOT EXISTS pending (
 );
 `;
 
+/** Columns added to `event` after its first release — applied to pre-existing tables via ALTER. */
+const MIGRATIONS = [
+  { name: "tokens", ddl: "ALTER TABLE event ADD COLUMN tokens INTEGER NOT NULL DEFAULT 0" },
+  { name: "token_type", ddl: "ALTER TABLE event ADD COLUMN token_type TEXT NOT NULL DEFAULT 'none'" },
+];
+
+/** Add any columns missing from an already-created `event` table (CREATE IF NOT EXISTS won't). */
+function migrate(db: Db): void {
+  const columns = new Set(
+    (db.prepare("PRAGMA table_info(event)").all() as Array<{ name: string }>).map((c) => c.name),
+  );
+  for (const { name, ddl } of MIGRATIONS) {
+    if (!columns.has(name)) {
+      db.exec(ddl);
+    }
+  }
+}
+
 /** Open (creating the parent dir + schema) a WAL-mode SQLite database at path. */
 export async function openDb(path: string): Promise<Db> {
   await mkdir(dirname(path), { recursive: true });
@@ -40,6 +60,7 @@ export async function openDb(path: string): Promise<Db> {
   db.exec("PRAGMA journal_mode = WAL;");
   db.exec("PRAGMA synchronous = NORMAL;");
   db.exec(SCHEMA);
+  migrate(db);
   return db;
 }
 

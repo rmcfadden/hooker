@@ -1,6 +1,6 @@
 import { basename } from "node:path";
 import { resolveTier } from "./tiers.ts";
-import type { EventInput, Tier } from "./types.ts";
+import type { EventInput, TokenType, Tier } from "./types.ts";
 
 /** An executable + its verb/script, either of which may be absent for a pure-noise segment. */
 interface Parts {
@@ -269,16 +269,20 @@ export interface ToEventsArgs {
   start: number;
   end: number;
   status?: string | null | undefined;
+  tokens?: number | null | undefined;
+  tokenType?: TokenType | null | undefined;
 }
 
 /**
  * Expand one paired tool timing into event rows. A Bash call splits (quote/heredoc aware) on
  * `&&`/`;`/newline into one row per sub-command — the last non-trivial one is primary and gets the
  * full [start, end]; the rest are count-only ([end, end], 0 µs). Non-Bash calls yield a single row.
+ * Tokens are a per-call total, so they land on the primary row only; token_type tags every row.
  */
-export function toEvents({ tier, hook, source, start, end, status }: ToEventsArgs): EventInput[] {
+export function toEvents({ tier, hook, source, start, end, status, tokens, tokenType }: ToEventsArgs): EventInput[] {
   const resolvedStatus = status ?? "success";
   const resolvedTier = resolveTier(tier, hook);
+  const resolvedType = tokenType ?? "none";
   const rows =
     hook === "Bash"
       ? bashRows(source)
@@ -292,5 +296,7 @@ export function toEvents({ tier, hook, source, start, end, status }: ToEventsArg
     subcommand: row.subcommand,
     status: resolvedStatus,
     sourceKey: null,
+    tokens: row.primary ? tokens ?? 0 : 0,
+    tokenType: resolvedType,
   }));
 }

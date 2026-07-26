@@ -84,6 +84,8 @@ async function cmdRecord(flags: Flags): Promise<void> {
   const hook = str(flags.hook);
   const command = str(flags.command);
   const status = typeof flags.status === "string" ? flags.status : "success";
+  const tokens = flags.tokens != null ? Number(flags.tokens) : 0;
+  const tokenType = strOpt(flags["token-type"]) ?? "none";
   const db = await openDb(dbPath());
   if (flags.split) {
     recordSplit(db, {
@@ -93,6 +95,8 @@ async function cmdRecord(flags: Flags): Promise<void> {
       status,
       start: Number(flags.start),
       end: Number(flags.end),
+      tokens,
+      tokenType,
     });
   } else if (flags.phase) {
     recordMarker(db, {
@@ -104,6 +108,8 @@ async function cmdRecord(flags: Flags): Promise<void> {
       command,
       status,
       ts: Number(flags.end ?? flags.start),
+      tokens,
+      tokenType,
     });
   } else {
     insertEvent(db, {
@@ -113,6 +119,8 @@ async function cmdRecord(flags: Flags): Promise<void> {
       status,
       start: Number(flags.start),
       end: Number(flags.end),
+      tokens,
+      tokenType,
     });
   }
   db.close();
