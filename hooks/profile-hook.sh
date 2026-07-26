@@ -5,7 +5,7 @@
 set -uo pipefail
 
 script_dir=$(cd "$(dirname "$0")" && pwd)
-bin="$script_dir/../bin/hooker.mjs"
+bin="$script_dir/../bin/hooker.ts"
 now_us() { perl -MTime::HiRes=time -e 'printf("%d", time() * 1e6)'; }
 
 label="$1"

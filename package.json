@@ -4,7 +4,7 @@
   "description": "Profile Claude/Cursor/git/GitHub hooks and tool calls into SQLite with a CLI + HTML report",
   "type": "module",
   "bin": {
-    "hooker": "bin/hooker.mjs"
+    "hooker": "bin/hooker.ts"
   },
   "files": [
     "bin",

@@ -119,9 +119,9 @@ async function handle(req: IncomingMessage, res: ServerResponse, db: Db): Promis
 
 /** Options for {@link serve}. */
 export interface ServeOptions {
-  port?: number;
-  host?: string;
-  path?: string;
+  port?: number | undefined;
+  host?: string | undefined;
+  path?: string | undefined;
 }
 
 /**

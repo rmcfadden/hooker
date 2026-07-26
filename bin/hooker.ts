@@ -40,78 +40,94 @@ import {
   installCursor,
   uninstallCursor,
 } from "../lib/install-cursor.ts";
+import type { Flags, Paint, Report, ReportGroup, Segment } from "../lib/types.ts";
 
-const stdoutLine = (line) => process.stdout.write(`${line}\n`);
+const stdoutLine = (line: string): boolean => process.stdout.write(`${line}\n`);
 
 // Output sink — swappable so tests (or embedders) can capture CLI output instead of stdout.
-let writeLine = stdoutLine;
+let writeLine: (line: string) => unknown = stdoutLine;
 
 /** Redirect CLI output; call with no args to restore the default stdout writer. */
-export function setWriter(fn = stdoutLine) {
+export function setWriter(fn: (line: string) => unknown = stdoutLine): void {
   writeLine = fn;
 }
 
-function out(line) {
+function out(line: string): void {
   writeLine(line);
 }
 
-async function cmdInit() {
+/** A flag's string value, or "" when it's absent or a bare boolean flag. */
+function str(v: string | boolean | undefined): string {
+  return typeof v === "string" ? v : "";
+}
+
+/** A flag's string value, or undefined when it's absent or a bare boolean flag. */
+function strOpt(v: string | boolean | undefined): string | undefined {
+  return typeof v === "string" ? v : undefined;
+}
+
+async function cmdInit(): Promise<void> {
   const db = await openDb(dbPath());
   db.close();
   await mkdir(reportsDir(), { recursive: true });
   out(`hooker: initialized ${dbPath()}`);
 }
 
-async function cmdReset() {
+async function cmdReset(): Promise<void> {
   const db = await resetDb(dbPath());
   db.close();
   out(`hooker: reset ${dbPath()} (dropped all events)`);
 }
 
-function eventFromFlags(flags) {
-  const base = {
-    tier: flags.tier,
-    hook: flags.hook,
-    command: flags.command,
-    status: flags.status ?? "success",
-  };
-  if (flags.phase) {
-    return {
-      phase: flags.phase,
-      corr: flags.corr,
-      key: flags.key,
-      ts: Number(flags.end ?? flags.start),
-      ...base,
-    };
-  }
-  return { ...base, start: Number(flags.start), end: Number(flags.end) };
-}
-
-async function cmdRecord(flags) {
-  const event = eventFromFlags(flags);
+async function cmdRecord(flags: Flags): Promise<void> {
+  const tier = str(flags.tier);
+  const hook = str(flags.hook);
+  const command = str(flags.command);
+  const status = typeof flags.status === "string" ? flags.status : "success";
   const db = await openDb(dbPath());
   if (flags.split) {
-    recordSplit(db, { ...event, source: event.command });
-  } else if (event.phase) {
-    recordMarker(db, event);
+    recordSplit(db, {
+      tier,
+      hook,
+      source: command,
+      status,
+      start: Number(flags.start),
+      end: Number(flags.end),
+    });
+  } else if (flags.phase) {
+    recordMarker(db, {
+      phase: flags.phase === "post" ? "post" : "pre",
+      corr: str(flags.corr),
+      key: str(flags.key),
+      tier,
+      hook,
+      command,
+      status,
+      ts: Number(flags.end ?? flags.start),
+    });
   } else {
-    insertEvent(db, event);
+    insertEvent(db, {
+      tier,
+      hook,
+      command,
+      status,
+      start: Number(flags.start),
+      end: Number(flags.end),
+    });
   }
   db.close();
 }
 
-async function cmdIngest(flags) {
+async function cmdIngest(flags: Flags): Promise<void> {
   const db = await openDb(dbPath());
-  const opts = { since: flags.since, repo: flags.repo };
-  out(
-    `hooker: ingested ${await ingestGithub(db, opts)} GitHub Actions events`,
-  );
+  const opts = { since: strOpt(flags.since), repo: strOpt(flags.repo) };
+  out(`hooker: ingested ${await ingestGithub(db, opts)} GitHub Actions events`);
   db.close();
 }
 
-async function cmdMock(flags) {
+async function cmdMock(flags: Flags): Promise<void> {
   const count = Number(flags.count ?? 5000);
-  const last = flags.last ?? "30d";
+  const last = strOpt(flags.last) ?? "30d";
   const seed = flags.seed != null ? Number(flags.seed) : nowMicros() >>> 0;
   const db = flags.reset ? await resetDb(dbPath()) : await openDb(dbPath());
   const events = generateEvents({
@@ -127,7 +143,7 @@ async function cmdMock(flags) {
   );
 }
 
-function waitNote(report, paint) {
+function waitNote(report: Report, paint: Paint): string {
   if (report.wait.count === 0) {
     return "";
   }
@@ -137,12 +153,15 @@ function waitNote(report, paint) {
   return `  ${paint(text, "dim")}`;
 }
 
-const COL_STYLE = { tier: tierStyle, category: categoryStyle };
+const COL_STYLE: Record<string, (value: string) => Segment["style"]> = {
+  tier: tierStyle,
+  category: categoryStyle,
+};
 const LABEL_WIDTH = 48;
 
 /** `tier › command › subcommand` as paintable segments (tier/category tinted, separators dimmed). */
-function labelSegments(report, g) {
-  const segments = [];
+function labelSegments(report: Report, g: ReportGroup): Segment[] {
+  const segments: Segment[] = [];
   for (const col of report.groupCols) {
     const val = g[col];
     if (val == null || val === "") {
@@ -151,12 +170,12 @@ function labelSegments(report, g) {
     if (segments.length > 0) {
       segments.push({ text: " › ", style: "dim" });
     }
-    segments.push({ text: String(val), style: COL_STYLE[col]?.(val) ?? null });
+    segments.push({ text: String(val), style: COL_STYLE[col]?.(String(val)) ?? null });
   }
   return segments;
 }
 
-function printReport(report, paint) {
+function printReport(report: Report, paint: Paint): void {
   const t = report.totals;
   out(
     `${paint("Range", "bold")} ${paint(rangeLabel(report), "cyan")}  ${t.count} events  ` +
@@ -172,15 +191,14 @@ function printReport(report, paint) {
   }
 }
 
-async function cmdReport(flags) {
+async function cmdReport(flags: Flags): Promise<void> {
   const db = await openDb(dbPath());
-  const group =
-    typeof flags.group === "string" ? flags.group.split(",") : undefined;
+  const group = typeof flags.group === "string" ? flags.group.split(",") : undefined;
   const includeWait = Boolean(flags["include-wait"] ?? flags.wait);
   const report = buildReport(db, {
-    from: flags.from,
-    to: flags.to,
-    last: flags.last,
+    from: strOpt(flags.from),
+    to: strOpt(flags.to),
+    last: strOpt(flags.last),
     group,
     includeWait,
   });
@@ -196,35 +214,33 @@ async function cmdReport(flags) {
   }
 }
 
-async function cmdServe(flags) {
+async function cmdServe(flags: Flags): Promise<{ server: import("node:http").Server; url: string }> {
   const result = await serve({
     port: flags.port != null ? Number(flags.port) : undefined,
-    host: flags.host,
+    host: strOpt(flags.host),
   });
   out(`hooker: serving report UI + API at ${result.url} (Ctrl-C to stop)`);
   return result;
 }
 
-function isCursor(flags) {
+function isCursor(flags: Flags): boolean {
   return flags.host === "cursor";
 }
 
-function cursorOpts(flags) {
+function cursorOpts(flags: Flags): { target: string; home: string; global: boolean } {
   return {
-    target: flags.target ?? process.cwd(),
+    target: strOpt(flags.target) ?? process.cwd(),
     home: profileHome,
     global: Boolean(flags.global),
   };
 }
 
-async function cmdInstall(flags) {
+async function cmdInstall(flags: Flags): Promise<void> {
   if (isCursor(flags)) {
-    out(
-      `hooker: wired cursor recorders into ${await installCursor(cursorOpts(flags))}`,
-    );
+    out(`hooker: wired cursor recorders into ${await installCursor(cursorOpts(flags))}`);
     return;
   }
-  const target = flags.target ?? process.cwd();
+  const target = strOpt(flags.target) ?? process.cwd();
   const files = await install({
     target,
     home: profileHome,
@@ -233,7 +249,7 @@ async function cmdInstall(flags) {
   out(`hooker: wired recorders into ${files.join(", ")}`);
 }
 
-async function cmdUpgrade(flags) {
+async function cmdUpgrade(flags: Flags): Promise<void> {
   if (isCursor(flags)) {
     const file = await installCursor(cursorOpts(flags));
     out(
@@ -241,7 +257,7 @@ async function cmdUpgrade(flags) {
     );
     return;
   }
-  const target = flags.target ?? process.cwd();
+  const target = strOpt(flags.target) ?? process.cwd();
   await upgrade({
     target,
     home: profileHome,
@@ -255,30 +271,24 @@ async function cmdUpgrade(flags) {
   );
 }
 
-async function cmdInstallGit(flags) {
-  const target = flags.target ?? process.cwd();
+async function cmdInstallGit(flags: Flags): Promise<void> {
+  const target = strOpt(flags.target) ?? process.cwd();
   const files = await wrapGitHooks({ target, home: profileHome });
-  out(
-    `hooker: wrapped git-hook steps in ${files.join(", ") || "(no git hooks found)"}`,
-  );
+  out(`hooker: wrapped git-hook steps in ${files.join(", ") || "(no git hooks found)"}`);
 }
 
-async function cmdUninstallGit(flags) {
-  const target = flags.target ?? process.cwd();
-  const files = await unwrapGitHooks({ target, home: profileHome });
-  out(
-    `hooker: unwrapped git hooks in ${files.join(", ") || "(no git hooks found)"}`,
-  );
+async function cmdUninstallGit(flags: Flags): Promise<void> {
+  const target = strOpt(flags.target) ?? process.cwd();
+  const files = await unwrapGitHooks({ target });
+  out(`hooker: unwrapped git hooks in ${files.join(", ") || "(no git hooks found)"}`);
 }
 
-async function cmdStatus(flags) {
+async function cmdStatus(flags: Flags): Promise<void> {
   if (isCursor(flags)) {
-    out(
-      `hooker: cursor events=[${(await cursorStatus(cursorOpts(flags))).events.join(", ")}]`,
-    );
+    out(`hooker: cursor events=[${(await cursorStatus(cursorOpts(flags))).events.join(", ")}]`);
     return;
   }
-  const target = flags.target ?? process.cwd();
+  const target = strOpt(flags.target) ?? process.cwd();
   const info = await status({ target });
   const gitSteps = await gitHookStatus({ target });
   out(
@@ -286,18 +296,18 @@ async function cmdStatus(flags) {
   );
 }
 
-async function cmdUninstall(flags) {
+async function cmdUninstall(flags: Flags): Promise<void> {
   if (isCursor(flags)) {
-    out(
-      `hooker: removed cursor recorders from ${await uninstallCursor(cursorOpts(flags))}`,
-    );
+    out(`hooker: removed cursor recorders from ${await uninstallCursor(cursorOpts(flags))}`);
     return;
   }
-  const files = await uninstall({ target: flags.target ?? process.cwd() });
+  const files = await uninstall({ target: strOpt(flags.target) ?? process.cwd() });
   out(`hooker: removed profile entries from ${files.join(", ")}`);
 }
 
-const COMMANDS = {
+type Handler = (flags: Flags) => Promise<unknown>;
+
+const COMMANDS: Record<string, Handler> = {
   init: cmdInit,
   reset: cmdReset,
   record: cmdRecord,
@@ -314,14 +324,15 @@ const COMMANDS = {
   status: cmdStatus,
 };
 
-export async function main(argv = process.argv.slice(2)) {
+export async function main(argv: string[] = process.argv.slice(2)): Promise<unknown> {
   const { positional, flags } = parseFlags(argv);
-  const command = COMMANDS[positional[0]];
+  const name = positional[0];
+  const command = name ? COMMANDS[name] : undefined;
   if (!command) {
     out(
       "usage: hooker <init|reset|record|ingest|mock|report|serve|install|upgrade|update|uninstall|install-git|uninstall-git|status> [flags]",
     );
-    process.exitCode = positional[0] ? 1 : 0;
+    process.exitCode = name ? 1 : 0;
     return;
   }
   return command(flags);
@@ -329,8 +340,9 @@ export async function main(argv = process.argv.slice(2)) {
 
 // Only auto-run when executed as the CLI entry point, so tests can import main().
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  main().catch((err) => {
-    process.stderr.write(`hooker: ${err.stack ?? err}\n`);
+  main().catch((err: unknown) => {
+    const detail = err instanceof Error ? (err.stack ?? err.message) : String(err);
+    process.stderr.write(`hooker: ${detail}\n`);
     process.exit(1);
   });
 }
