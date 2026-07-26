@@ -4,11 +4,10 @@ import type { AddressInfo } from "node:net";
 import { readFile } from "node:fs/promises";
 import { extname, join, normalize, sep } from "node:path";
 import { fileURLToPath } from "node:url";
-import { buildReport } from "./aggregate.ts";
-import { nowMicros } from "./clock.ts";
-import { openDb } from "./db.ts";
 import { dbPath } from "./paths.ts";
-import type { Db, ReportOptions } from "./types.ts";
+import { createService } from "./service.ts";
+import type { HookerService } from "./service.ts";
+import type { ReportOptions } from "./types.ts";
 
 /** Built React bundle (web/dist) — served as the UI when present; see web/README for the build. */
 const WEB_DIST = fileURLToPath(new URL("../web/dist", import.meta.url));
@@ -29,6 +28,7 @@ function sendJson(res: ServerResponse, status: number, body: unknown): void {
     "content-type": "application/json; charset=utf-8",
     "cache-control": "no-store",
     "access-control-allow-origin": "*",
+    "access-control-allow-methods": "GET, POST, OPTIONS",
   });
   res.end(JSON.stringify(body));
 }
@@ -44,20 +44,6 @@ function reportOptions(params: URLSearchParams): ReportOptions {
     group: group ? group.split(",").filter(Boolean) : undefined,
     includeWait: includeWait === "1" || includeWait === "true",
   };
-}
-
-interface MetaRow {
-  min: number | null;
-  max: number | null;
-  count: number;
-}
-
-/** Now plus the epoch-µs span of recorded events, so the UI can bound its datetime pickers. */
-function meta(db: Db): { now: number; min: number | null; max: number | null; count: number } {
-  const row = db
-    .prepare(`SELECT MIN(start) AS min, MAX("end") AS max, COUNT(*) AS count FROM event`)
-    .get() as unknown as MetaRow;
-  return { now: nowMicros(), min: row.min, max: row.max, count: row.count };
 }
 
 /** Serve a file out of web/dist, falling back to index.html for client-side routes. */
@@ -94,18 +80,56 @@ async function serveIndex(res: ServerResponse): Promise<void> {
   res.end(body);
 }
 
-/** Route one request: `/api/*` returns JSON from the live DB, everything else is the web bundle. */
-async function handle(req: IncomingMessage, res: ServerResponse, db: Db): Promise<void> {
+/** Dispatch an `/api/*` request against the service. `control` mounts the mutating routes. */
+async function handleApi(
+  req: IncomingMessage,
+  res: ServerResponse,
+  service: HookerService,
+  control: boolean,
+  url: URL,
+): Promise<void> {
+  const method = req.method ?? "GET";
+  // Preflight so browsers can POST the control routes under the open-CORS posture.
+  if (method === "OPTIONS") {
+    res.writeHead(204, {
+      "access-control-allow-origin": "*",
+      "access-control-allow-methods": "GET, POST, OPTIONS",
+      "access-control-allow-headers": "content-type",
+    });
+    res.end();
+    return;
+  }
+  if (url.pathname === "/api/report") {
+    return sendJson(res, 200, service.report(reportOptions(url.searchParams)));
+  }
+  if (url.pathname === "/api/meta") {
+    return sendJson(res, 200, service.meta());
+  }
+  if (url.pathname === "/api/status") {
+    return sendJson(res, 200, await service.status());
+  }
+  // Control routes are opt-in (`--control`); otherwise they 404 like any unknown route.
+  if (control && (url.pathname === "/api/enable" || url.pathname === "/api/disable")) {
+    if (method !== "POST") {
+      return sendJson(res, 405, { error: `use POST for ${url.pathname}` });
+    }
+    const enabled = url.pathname === "/api/enable";
+    return sendJson(res, 200, { recording: await service.setEnabled(enabled) });
+  }
+  return sendJson(res, 404, { error: `no route ${url.pathname}` });
+}
+
+/** Route one request: `/api/*` returns JSON from the service, everything else is the web bundle. */
+async function handle(
+  req: IncomingMessage,
+  res: ServerResponse,
+  service: HookerService,
+  control: boolean,
+): Promise<void> {
   const url = new URL(req.url ?? "/", "http://localhost");
   try {
-    if (url.pathname === "/api/report") {
-      return sendJson(res, 200, buildReport(db, reportOptions(url.searchParams)));
-    }
-    if (url.pathname === "/api/meta") {
-      return sendJson(res, 200, meta(db));
-    }
     if (url.pathname.startsWith("/api/")) {
-      return sendJson(res, 404, { error: `no route ${url.pathname}` });
+      return await handleApi(req, res, service, control, url);
     }
     return await serveStatic(res, url.pathname);
   } catch (err) {
@@ -122,20 +146,24 @@ export interface ServeOptions {
   port?: number | undefined;
   host?: string | undefined;
   path?: string | undefined;
+  /** Mount the state-mutating control routes (`POST /api/enable|disable`). Off by default. */
+  control?: boolean | undefined;
 }
 
 /**
- * Start the report server on `host:port`. Holds one WAL-mode connection open for the process
- * lifetime so range queries always read the latest committed events. Resolves to `{ server, url }`.
+ * Start the report server on `host:port`. Holds one service (a WAL-mode connection) open for the
+ * process lifetime so range queries always read the latest committed events. `control` opts into
+ * the enable/disable routes. Resolves to `{ server, url }`.
  */
 export async function serve({
   port = 4180,
   host = "127.0.0.1",
   path = dbPath(),
+  control = false,
 }: ServeOptions = {}): Promise<{ server: Server; url: string }> {
-  const db = await openDb(path);
-  const server = createServer((req, res) => handle(req, res, db));
-  server.on("close", () => db.close());
+  const service = await createService({ path });
+  const server = createServer((req, res) => handle(req, res, service, control));
+  server.on("close", () => service.close());
   await new Promise<void>((resolve, reject) => {
     server.once("error", reject);
     server.listen(port, host, resolve);

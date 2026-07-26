@@ -74,7 +74,7 @@ hooker report --from … --to … --include-wait              # fold user think-
 hooker report --last 1h --no-color                        # plain text (color is on by default)
 hooker report --last 1d --group category                  # roll up into vcs/test/lint/pkg/…
 hooker report --from … --to … --group tier,command,subcommand --html
-hooker serve [--port 4180] [--host 127.0.0.1]             # live React report UI + JSON API
+hooker serve [--port 4180] [--host 127.0.0.1] [--control] # live React report UI + JSON API
 hooker install [--target <dir>] [--wrap-hooks]            # wire recorders into a project
 hooker install --host cursor [--global]                  # wire Cursor recorders (.cursor/hooks.json)
 hooker install-git                                        # time each git-hook step in place
@@ -112,6 +112,20 @@ that exposes the live SQLite data as JSON and serves an interactive React report
 - `GET /api/report?from=&to=&last=&group=&includeWait=` — the same payload as `hooker report`,
   re-queried per request so it always reflects the latest events.
 - `GET /api/meta` — `now` plus the epoch-µs span of recorded events (used to bound the pickers).
+- `GET /api/status` — `meta` plus a `recording` boolean (whether capture is currently enabled).
+
+**Control API (opt-in).** Pass `--control` to also mount the state-mutating routes — off by
+default so the server is read-only:
+
+- `POST /api/enable` / `POST /api/disable` — toggle recording (the same flag as `hooker
+  enable`/`disable`), returning `{ "recording": true|false }`.
+
+The server binds to `127.0.0.1` and has no auth, so only enable `--control` on a host you trust.
+
+**Service layer.** The server is a thin shell over `createService()` in
+[`lib/service.ts`](lib/service.ts) — a `HookerService` that owns one SQLite connection and exposes
+`report()`, `meta()`, `status()`, `isEnabled()`, and `setEnabled()`. Import it to embed the same
+reporting + control surface programmatically without starting an HTTP server.
 
 The UI (in [`web/`](web/), Vite + React + TypeScript + Tailwind) has a **range dropdown** with
 relative presets (last 15 min / hour / 6 h / 24 h / 7 days / 30 days / all time) and a **custom
