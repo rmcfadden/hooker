@@ -61,7 +61,13 @@ export function recordMarker(db: Db, marker: MarkerEvent): boolean {
   if (marker.phase === "pre") {
     db.prepare(
       "INSERT OR REPLACE INTO pending (corr, tier, hook, command, start) VALUES (?, ?, ?, ?, ?)",
-    ).run(marker.corr, marker.tier, marker.hook, marker.raw ?? marker.command, marker.ts);
+    ).run(
+      marker.corr,
+      marker.tier ?? "",
+      marker.hook ?? "",
+      marker.raw ?? marker.command ?? "",
+      marker.ts,
+    );
     return false;
   }
   const pre = db

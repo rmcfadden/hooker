@@ -19,9 +19,9 @@ import type {
  * (`2026-07-22T14:30:00`); a missing bound is unbounded.
  */
 export function rangeMicros(
-  from: string | undefined,
-  to: string | undefined,
-  last: string | undefined,
+  from?: string,
+  to?: string,
+  last?: string,
 ): { lo: number; hi: number } {
   if (last) {
     return {

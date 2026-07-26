@@ -8,9 +8,10 @@ import {
   makePaint,
   tierStyle,
 } from "../lib/ansi.ts";
+import type { StyleName } from "../lib/types.ts";
 
 const plain = makePaint(false);
-const seg = (text, style = null) => ({ text, style });
+const seg = (text: string, style: StyleName | null = null) => ({ text, style });
 
 test("fitSegments pads a short label to a fixed visible width", () => {
   const out = fitSegments([seg("git"), seg(" › "), seg("push")], 40, plain);

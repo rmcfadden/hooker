@@ -71,7 +71,7 @@ test("wrapHookText injects the shim once and unwrap restores the original", () =
   assert.equal(wrapHookText(wrapped, "pre-commit", "profile/hooks"), wrapped);
 });
 
-async function initRepoWithHook(body) {
+async function initRepoWithHook(body: string) {
   const repo = await mkdtemp(join(tmpdir(), "profile-git-"));
   await execFileAsync("git", ["init", "-q"], { cwd: repo });
   await mkdir(join(repo, ".git", "hooks"), { recursive: true });

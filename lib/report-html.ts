@@ -95,8 +95,15 @@ td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
 .lbl{font:12px system-ui}.val{font:12px system-ui;fill:#475569}
 .meta{color:#64748b}`;
 
+/** The window fields {@link rangeLabel} reads — a subset of {@link Report}. */
+interface RangeLike {
+  from?: string | undefined;
+  to?: string | undefined;
+  last?: string | undefined;
+}
+
 /** Human label for a report's window: a relative `last` span, else the from → to bounds. */
-export function rangeLabel(report: Report): string {
+export function rangeLabel(report: RangeLike): string {
   if (report.last) {
     return `last ${report.last}`;
   }

@@ -1,10 +1,11 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { categorize, subcategorize } from "../lib/categories.ts";
+import type { CategorizableRow } from "../lib/types.ts";
 
 test("categorize is tier-first: wait and guards never fall through to command rules", () => {
   assert.equal(
-    categorize({ tier: "claude-wait", hook: "AskUserQuestion" }),
+    categorize({ tier: "claude-wait", hook: "AskUserQuestion", command: "" }),
     "wait",
   );
   assert.equal(
@@ -39,7 +40,7 @@ test("categorize routes git-hook steps through the command rules", () => {
 });
 
 test("categorize maps Bash commands by executable and verb", () => {
-  const bash = (command, subcommand) =>
+  const bash = (command: string, subcommand: string | null) =>
     categorize({ tier: "claude-tool", hook: "Bash", command, subcommand });
   assert.equal(bash("git", "push"), "vcs");
   assert.equal(bash("gh", "pr"), "vcs");
@@ -74,7 +75,7 @@ test("categorize maps non-Bash tools by hook", () => {
 });
 
 test("subcategorize gives the verb/file-kind, or 'default' when there is none", () => {
-  const sub = (fields) =>
+  const sub = (fields: Pick<CategorizableRow, "command"> & Partial<CategorizableRow>) =>
     subcategorize({ tier: "claude-tool", hook: "Bash", ...fields });
   assert.equal(
     sub({ command: "npm", subcommand: "test:integration" }),

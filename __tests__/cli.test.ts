@@ -6,14 +6,14 @@ import { join } from "node:path";
 import { test } from "node:test";
 import { main, setWriter } from "../bin/hooker.ts";
 import { openDb } from "../lib/db.ts";
-import { withFakeGh } from "./fake-gh.mjs";
+import { withFakeGh } from "./fake-gh.ts";
 
 // Isolate every CLI invocation from the user's real ~/.profile data.
 const DATA = mkdtempSync(join(tmpdir(), "hooker-cli-"));
 process.env.PROFILE_DATA_DIR = DATA;
 
 /** Run the CLI with argv, capturing the lines it writes (via the swappable output sink). */
-async function run(...argv) {
+async function run(...argv: string[]): Promise<{ out: string; result: unknown }> {
   let buf = "";
   setWriter((line) => {
     buf += `${line}\n`;
@@ -26,9 +26,9 @@ async function run(...argv) {
   }
 }
 
-async function eventCount() {
+async function eventCount(): Promise<number> {
   const db = await openDb(join(DATA, "profile.db"));
-  const { n } = db.prepare("SELECT COUNT(*) AS n FROM event").get();
+  const { n } = db.prepare("SELECT COUNT(*) AS n FROM event").get() as { n: number };
   db.close();
   return n;
 }
@@ -120,8 +120,10 @@ test("hooker CLI", async (t) => {
       "--tier", "claude-tool", "--hook", "PostToolUse", "--command", "Read", "--end", "5400",
     );
     const db = await openDb(join(DATA, "profile.db"));
-    const row = db.prepare("SELECT * FROM event WHERE start=5000").get();
-    const pending = db.prepare("SELECT COUNT(*) AS n FROM pending").get().n;
+    const row = db.prepare("SELECT * FROM event WHERE start=5000").get() as
+      | { start: number; end: number }
+      | undefined;
+    const { n: pending } = db.prepare("SELECT COUNT(*) AS n FROM pending").get() as { n: number };
     db.close();
     assert.ok(row, "expected the pre/post markers to pair into one event");
     assert.equal(row.end - row.start, 400);
@@ -141,11 +143,12 @@ test("hooker CLI", async (t) => {
   await t.test("serve starts an HTTP server that answers /api/meta", async () => {
     const { out, result } = await run("serve", "--port", "0");
     assert.match(out, /serving report UI \+ API/);
+    const serveResult = result as { server: import("node:http").Server; url: string };
     try {
-      const meta = await (await fetch(`${result.url}/api/meta`)).json();
+      const meta = (await (await fetch(`${serveResult.url}/api/meta`)).json()) as { count: number };
       assert.ok(typeof meta.count === "number");
     } finally {
-      result.server.close();
+      serveResult.server.close();
     }
   });
 

@@ -9,12 +9,12 @@ async function tempTarget() {
   return mkdtemp(join(tmpdir(), "profile-target-"));
 }
 
-async function readJsonMaybe(target, name) {
+async function readJsonMaybe(target: string, name: string) {
   const text = await readFile(join(target, ".claude", name), "utf8").catch(() => "{}");
   return JSON.parse(text);
 }
 
-function homeUnder(target) {
+function homeUnder(target: string) {
   return join(target, "profile");
 }
 
@@ -22,8 +22,8 @@ test("install adds tool recorders to settings.local.json with portable paths", a
   const target = await tempTarget();
   await install({ target, home: homeUnder(target) });
   const local = await readJsonMaybe(target, "settings.local.json");
-  assert.equal(local.hooks.PreToolUse.filter((e) => e._profile).length, 1);
-  assert.equal(local.hooks.PostToolUse.filter((e) => e._profile).length, 1);
+  assert.equal(local.hooks.PreToolUse.filter((e: { _profile?: boolean }) => e._profile).length, 1);
+  assert.equal(local.hooks.PostToolUse.filter((e: { _profile?: boolean }) => e._profile).length, 1);
   const cmd = local.hooks.PreToolUse[0].hooks[0].command;
   assert.equal(cmd, "bash ${CLAUDE_PROJECT_DIR}/profile/hooks/profile-tool-pre.sh");
   const info = await status({ target });
@@ -42,7 +42,7 @@ test("install is idempotent — re-running does not duplicate recorders", async 
   await install({ target, home: homeUnder(target) });
   await install({ target, home: homeUnder(target) });
   const local = await readJsonMaybe(target, "settings.local.json");
-  assert.equal(local.hooks.PreToolUse.filter((e) => e._profile).length, 1);
+  assert.equal(local.hooks.PreToolUse.filter((e: { _profile?: boolean }) => e._profile).length, 1);
 });
 
 test("upgrade re-applies recorders and is idempotent (no duplication)", async () => {
@@ -50,7 +50,7 @@ test("upgrade re-applies recorders and is idempotent (no duplication)", async ()
   await install({ target, home: homeUnder(target) });
   await upgrade({ target, home: homeUnder(target) });
   const local = await readJsonMaybe(target, "settings.local.json");
-  assert.equal(local.hooks.PreToolUse.filter((e) => e._profile).length, 1);
+  assert.equal(local.hooks.PreToolUse.filter((e: { _profile?: boolean }) => e._profile).length, 1);
   assert.equal((await status({ target })).recorders.length, 2);
 });
 
@@ -82,11 +82,11 @@ test("wrapHooks wraps settings.json commands and uninstall restores them", async
 
   await install({ target, home: homeUnder(target), wrapHooks: true });
   let settings = await readJsonMaybe(target, "settings.json");
-  const wrapped = settings.hooks.PreToolUse.find((e) => !e._profile).hooks[0];
+  const wrapped = settings.hooks.PreToolUse.find((e: { _profile?: boolean }) => !e._profile).hooks[0];
   assert.match(wrapped.command, /profile\/hooks\/profile-hook\.sh guard /);
   assert.equal(wrapped._profileOrig, original);
   const local = await readJsonMaybe(target, "settings.local.json");
-  assert.equal(local.hooks.PreToolUse.filter((e) => e._profile).length, 1);
+  assert.equal(local.hooks.PreToolUse.filter((e: { _profile?: boolean }) => e._profile).length, 1);
   assert.equal((await status({ target })).wrapped, 1);
 
   await uninstall({ target });

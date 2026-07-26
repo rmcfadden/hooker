@@ -6,6 +6,14 @@ import { test } from "node:test";
 import { openDb } from "../lib/db.ts";
 import { insertMany } from "../lib/record.ts";
 import { serve } from "../lib/serve.ts";
+import type { Report } from "../lib/types.ts";
+
+interface MetaResponse {
+  now: number;
+  min: number | null;
+  max: number | null;
+  count: number;
+}
 
 async function seededServer() {
   const dir = await mkdtemp(join(tmpdir(), "hooker-serve-"));
@@ -25,7 +33,7 @@ test("GET /api/report aggregates events and honors the group param", async () =>
   try {
     const res = await fetch(`${url}/api/report?group=tier`);
     assert.equal(res.status, 200);
-    const report = await res.json();
+    const report = (await res.json()) as Report;
     assert.deepEqual(report.groupCols, ["tier"]);
     assert.equal(report.totals.count, 2);
     assert.equal(report.totals.failures, 1);
@@ -38,7 +46,7 @@ test("GET /api/report aggregates events and honors the group param", async () =>
 test("GET /api/meta reports the event span and count", async () => {
   const { server, url } = await seededServer();
   try {
-    const meta = await (await fetch(`${url}/api/meta`)).json();
+    const meta = (await (await fetch(`${url}/api/meta`)).json()) as MetaResponse;
     assert.equal(meta.count, 2);
     assert.equal(meta.min, 1000);
     assert.equal(meta.max, 2500);
@@ -53,7 +61,7 @@ test("an unparseable duration surfaces as a 400 JSON error", async () => {
   try {
     const res = await fetch(`${url}/api/report?last=soon`);
     assert.equal(res.status, 400);
-    assert.match((await res.json()).error, /unparseable duration/);
+    assert.match(((await res.json()) as { error: string }).error, /unparseable duration/);
   } finally {
     server.close();
   }
@@ -64,7 +72,7 @@ test("unknown API routes 404 as JSON", async () => {
   try {
     const res = await fetch(`${url}/api/nope`);
     assert.equal(res.status, 404);
-    assert.match((await res.json()).error, /no route/);
+    assert.match(((await res.json()) as { error: string }).error, /no route/);
   } finally {
     server.close();
   }
@@ -75,7 +83,7 @@ test("the root path serves the built web bundle's index.html", async () => {
   try {
     const res = await fetch(`${url}/`);
     assert.equal(res.status, 200);
-    assert.match(res.headers.get("content-type"), /text\/html/);
+    assert.match(res.headers.get("content-type") ?? "",/text\/html/);
     assert.match(await res.text(), /<!doctype html>/i);
   } finally {
     server.close();
@@ -87,7 +95,7 @@ test("a real asset is served with its content-type", async () => {
   try {
     const res = await fetch(`${url}/assets/index-D142FQuR.css`);
     assert.equal(res.status, 200);
-    assert.match(res.headers.get("content-type"), /text\/css/);
+    assert.match(res.headers.get("content-type") ?? "",/text\/css/);
   } finally {
     server.close();
   }
@@ -98,7 +106,7 @@ test("an unknown non-API path falls back to index.html (client-side routing)", a
   try {
     const res = await fetch(`${url}/some/deep/spa/route`);
     assert.equal(res.status, 200);
-    assert.match(res.headers.get("content-type"), /text\/html/);
+    assert.match(res.headers.get("content-type") ?? "",/text\/html/);
   } finally {
     server.close();
   }

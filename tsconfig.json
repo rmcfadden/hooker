@@ -1,7 +1,6 @@
 {
-  // Type-check config (no emit). The build config (tsconfig.build.json) extends this to emit dist/.
-  // Incremental migration: allowJs keeps the .mjs sources compiling while they are converted to .ts
-  // one module at a time. checkJs stays off so un-migrated JS isn't type-checked yet.
+  // Type-check config for lib/ + bin/ (no emit). tsconfig.build.json extends this to emit dist/;
+  // tsconfig.test.json extends it for the tests with two extras relaxed.
   "compilerOptions": {
     "target": "es2023",
     "module": "nodenext",
@@ -21,11 +20,9 @@
     "allowImportingTsExtensions": true,
     "rewriteRelativeImportExtensions": true,
 
-    "allowJs": true,
-    "checkJs": false,
     "skipLibCheck": true,
     "noEmit": true
   },
-  "include": ["lib/**/*", "bin/**/*", "__tests__/**/*"],
+  "include": ["lib/**/*", "bin/**/*"],
   "exclude": ["node_modules", "dist", "web"]
 }

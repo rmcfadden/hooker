@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { eventsIn, runHook, script, tempDataDir } from "./hook-harness.mjs";
+import { eventsIn, runHook, script, tempDataDir } from "./hook-harness.ts";
 
-const run = (name, input, dir) => runHook([script(name)], input, dir);
+const run = (name: string, input: string, dir: string) => runHook([script(name)], input, dir);
 const dataDir = () => tempDataDir("cursor-hooks");
 
 test("cursor-shell.sh allows the command and records split activity (0 duration)", async () => {
@@ -16,6 +16,7 @@ test("cursor-shell.sh allows the command and records split activity (0 duration)
   assert.deepEqual(JSON.parse(res.stdout), { permission: "allow" });
   const rows = await eventsIn(dir);
   const push = rows.find((r) => r.command === "git");
+  assert.ok(push);
   assert.deepEqual(
     [push.tier, push.hook, push.subcommand, push.elapsed],
     ["cursor-tool", "Bash", "push", 0],

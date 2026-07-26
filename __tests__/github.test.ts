@@ -9,7 +9,7 @@ import {
   ingestGithub,
   stepsToEvents,
 } from "../lib/github.ts";
-import { withFakeGh } from "./fake-gh.mjs";
+import { withFakeGh } from "./fake-gh.ts";
 
 const JOBS = [
   {
@@ -66,7 +66,7 @@ test("ingestGithub inserts events and dedupes on re-ingest", async () => {
     assert.equal(await ingestGithub(db, { repo: "o/r" }), 2);
     // Second ingest hits the source_key unique index — no new rows land.
     await ingestGithub(db, { repo: "o/r" });
-    const { n } = db.prepare("SELECT COUNT(*) AS n FROM event").get();
+    const { n } = db.prepare("SELECT COUNT(*) AS n FROM event").get() as { n: number };
     assert.equal(n, 2);
   } finally {
     db.close();

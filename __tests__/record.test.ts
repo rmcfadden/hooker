@@ -17,13 +17,13 @@ test("insertMany rolls back and rethrows when a row is invalid", async () => {
   // Force a failure mid-transaction (INSERT OR IGNORE would swallow a bad value or constraint,
   // so make reading the row itself throw) to exercise the rollback-and-rethrow path.
   const bad = {
-    get start() {
+    get start(): number {
       throw new Error("boom");
     },
     end: 2, tier: "t", hook: "h", command: "c",
   };
   assert.throws(() => insertMany(db, [good, bad]), /boom/);
-  const { n } = db.prepare("SELECT COUNT(*) AS n FROM event").get();
+  const { n } = db.prepare("SELECT COUNT(*) AS n FROM event").get() as { n: number };
   assert.equal(n, 0, "the good row must not survive the rolled-back transaction");
   // The transaction is closed (not left dangling), so a subsequent insert still works.
   assert.equal(insertMany(db, [good]), 1);
@@ -41,7 +41,7 @@ test("a post marker with no matching pre is a no-op", async () => {
     ts: 100,
   });
   assert.equal(paired, false);
-  const { n } = db.prepare("SELECT COUNT(*) AS n FROM event").get();
+  const { n } = db.prepare("SELECT COUNT(*) AS n FROM event").get() as { n: number };
   assert.equal(n, 0);
   db.close();
 });

@@ -1,0 +1,14 @@
+{
+  // Test type-check config. Inherits the strict base (noImplicitAny, strictNullChecks, …) but
+  // relaxes the two ergonomic extras that add noise to assertion-heavy test code poking at
+  // deliberately loose data (SQLite rows, parsed JSON). The runtime still runs these via Node.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noUncheckedIndexedAccess": false,
+    "exactOptionalPropertyTypes": false,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false
+  },
+  "include": ["__tests__/**/*"],
+  "exclude": ["node_modules", "dist", "web"]
+}

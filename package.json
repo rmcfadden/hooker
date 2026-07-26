@@ -4,12 +4,10 @@
   "description": "Profile Claude/Cursor/git/GitHub hooks and tool calls into SQLite with a CLI + HTML report",
   "type": "module",
   "bin": {
-    "hooker": "bin/hooker.ts"
+    "hooker": "dist/bin/hooker.js"
   },
   "files": [
-    "bin",
-    "lib",
-    "hooks",
+    "dist",
     "README.md"
   ],
   "engines": {
@@ -18,8 +16,9 @@
   "scripts": {
     "test": "node --test",
     "coverage": "node --test --experimental-test-coverage --test-coverage-lines=0.95 --test-coverage-functions=0.95",
-    "typecheck": "tsc --noEmit -p tsconfig.json",
-    "build": "tsc -p tsconfig.build.json"
+    "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.test.json",
+    "build": "tsc -p tsconfig.build.json && node scripts/postbuild.ts",
+    "prepublishOnly": "npm run build"
   },
   "devDependencies": {
     "@types/node": "^22.20.1",
