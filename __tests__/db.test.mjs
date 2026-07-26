@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { openDb } from "../lib/db.ts";
-import { insertEvent, insertMany, recordMarker } from "../lib/record.mjs";
+import { insertEvent, insertMany, recordMarker } from "../lib/record.ts";
 
 const sample = {
   start: 1000,

@@ -8,7 +8,7 @@ import {
   fetchActionsEvents,
   ingestGithub,
   stepsToEvents,
-} from "../lib/github.mjs";
+} from "../lib/github.ts";
 import { withFakeGh } from "./fake-gh.mjs";
 
 const JOBS = [

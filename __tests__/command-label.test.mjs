@@ -5,7 +5,7 @@ import {
   deriveParts,
   splitSequence,
   toEvents,
-} from "../lib/command-label.mjs";
+} from "../lib/command-label.ts";
 
 test("bashParts splits executable and subcommand, skipping cd/env", () => {
   assert.deepEqual(bashParts("cd /some/path && git push"), {

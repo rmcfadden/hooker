@@ -6,15 +6,15 @@ import { parseFlags } from "../lib/args.ts";
 import { buildReport } from "../lib/aggregate.ts";
 import { durationMicros, nowMicros } from "../lib/clock.ts";
 import { openDb, resetDb } from "../lib/db.ts";
-import { ingestGithub } from "../lib/github.mjs";
-import { generateEvents } from "../lib/mock.mjs";
+import { ingestGithub } from "../lib/github.ts";
+import { generateEvents } from "../lib/mock.ts";
 import { dbPath, profileHome, reportsDir } from "../lib/paths.ts";
 import {
   insertEvent,
   insertMany,
   recordMarker,
   recordSplit,
-} from "../lib/record.mjs";
+} from "../lib/record.ts";
 import {
   formatDuration,
   rangeLabel,
@@ -28,18 +28,18 @@ import {
   makePaint,
   tierStyle,
 } from "../lib/ansi.ts";
-import { install, status, uninstall, upgrade } from "../lib/install.mjs";
-import { serve } from "../lib/serve.mjs";
+import { install, status, uninstall, upgrade } from "../lib/install.ts";
+import { serve } from "../lib/serve.ts";
 import {
   gitHookStatus,
   unwrapGitHooks,
   wrapGitHooks,
-} from "../lib/install-git.mjs";
+} from "../lib/install-git.ts";
 import {
   cursorStatus,
   installCursor,
   uninstallCursor,
-} from "../lib/install-cursor.mjs";
+} from "../lib/install-cursor.ts";
 
 const stdoutLine = (line) => process.stdout.write(`${line}\n`);
 

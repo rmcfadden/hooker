@@ -14,7 +14,7 @@ import {
   wrapGitHooks,
   wrapHookText,
   wrapStep,
-} from "../lib/install-git.mjs";
+} from "../lib/install-git.ts";
 
 const execFileAsync = promisify(execFile);
 

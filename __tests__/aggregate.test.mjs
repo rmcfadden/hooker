@@ -8,7 +8,7 @@ import {
 } from "../lib/aggregate.ts";
 import { nowMicros } from "../lib/clock.ts";
 import { openDb } from "../lib/db.ts";
-import { insertMany } from "../lib/record.mjs";
+import { insertMany } from "../lib/record.ts";
 import { WAIT_TIER } from "../lib/tiers.ts";
 
 async function seededDb() {

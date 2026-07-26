@@ -3,7 +3,7 @@ import { mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
-import { install, status, uninstall, upgrade } from "../lib/install.mjs";
+import { install, status, uninstall, upgrade } from "../lib/install.ts";
 
 async function tempTarget() {
   return mkdtemp(join(tmpdir(), "profile-target-"));

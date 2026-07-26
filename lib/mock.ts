@@ -1,16 +1,17 @@
 /**
  * Deterministic mock-event generator for populating the datasource so `hooker report` has
  * something to visualize. Pure (no DB/IO): callers persist the returned rows with `insertMany`.
- * Templates mirror the taxonomy in `categories.mjs` so generated rows land in real category groups.
+ * Templates mirror the taxonomy in `categories.ts` so generated rows land in real category groups.
  */
 
 import { resolveTier } from "./tiers.ts";
+import type { EventInput, Tier } from "./types.ts";
 
 const MS = 1000; // microseconds per millisecond
 const SEC = 1000 * MS;
 
 /** Seedable PRNG (mulberry32) — same seed yields the same sequence, so runs are reproducible. */
-function mulberry32(seed) {
+function mulberry32(seed: number): () => number {
   let a = seed >>> 0;
   return function next() {
     a |= 0;
@@ -21,12 +22,24 @@ function mulberry32(seed) {
   };
 }
 
+/** An event template biasing the generated mix (see the array below for field semantics). */
+interface Template {
+  weight: number;
+  tier: Tier;
+  hook: string;
+  command: string;
+  subs: string[] | null;
+  min: number;
+  max: number;
+  fail: number;
+}
+
 /**
  * Event templates. `weight` biases how often each is picked; `min`/`max` bound the elapsed time
  * (microseconds); `fail` is the per-template failure rate. `subs` (when present) supplies a random
  * subcommand — a Bash verb or, for file tools, a filename whose extension drives the subcategory.
  */
-const TEMPLATES = [
+const TEMPLATES: Template[] = [
   // claude-tool · Bash
   { weight: 8, tier: "claude-tool", hook: "Bash", command: "git", subs: ["status", "add", "commit", "push", "diff", "log"], min: 40 * MS, max: 2 * SEC, fail: 0.03 },
   { weight: 5, tier: "claude-tool", hook: "Bash", command: "npm", subs: ["install", "test", "run build", "ci"], min: 500 * MS, max: 40 * SEC, fail: 0.08 },
@@ -72,13 +85,22 @@ const TEMPLATES = [
 const TOTAL_WEIGHT = TEMPLATES.reduce((sum, t) => sum + t.weight, 0);
 
 /** Pick a template by weight from a [0,1) random value. */
-function pickTemplate(r) {
+function pickTemplate(r: number): Template {
   let x = r * TOTAL_WEIGHT;
   for (const t of TEMPLATES) {
     x -= t.weight;
     if (x < 0) return t;
   }
-  return TEMPLATES[TEMPLATES.length - 1];
+  // Non-empty constant array, so the final template is always defined.
+  return TEMPLATES[TEMPLATES.length - 1]!;
+}
+
+/** Options for {@link generateEvents}. */
+export interface GenerateArgs {
+  count: number;
+  windowMicros: number;
+  now: number;
+  seed: number;
 }
 
 /**
@@ -86,14 +108,14 @@ function pickTemplate(r) {
  * shaped for `insertEvent`/`insertMany` (`source_key` left unset so the partial dedupe index is a
  * no-op and every row inserts). Deterministic for a given `seed`.
  */
-export function generateEvents({ count, windowMicros, now, seed }) {
+export function generateEvents({ count, windowMicros, now, seed }: GenerateArgs): EventInput[] {
   const rand = mulberry32(seed);
-  const events = [];
+  const events: EventInput[] = [];
   for (let i = 0; i < count; i += 1) {
     const tpl = pickTemplate(rand());
     const start = Math.floor(now - windowMicros + rand() * windowMicros);
     const duration = Math.floor(tpl.min + rand() * (tpl.max - tpl.min));
-    const subcommand = tpl.subs ? tpl.subs[Math.floor(rand() * tpl.subs.length)] : null;
+    const subcommand = tpl.subs ? tpl.subs[Math.floor(rand() * tpl.subs.length)] ?? null : null;
     const status = rand() < tpl.fail ? "failure" : "success";
     events.push({
       start,
