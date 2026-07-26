@@ -4,7 +4,7 @@ import { mkdtemp, readdir, readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
-import { main, setWriter } from "../bin/hooker.mjs";
+import { main, setWriter } from "../bin/hooker.ts";
 import { openDb } from "../lib/db.ts";
 import { withFakeGh } from "./fake-gh.mjs";
 
