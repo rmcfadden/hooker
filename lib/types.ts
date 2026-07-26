@@ -15,6 +15,9 @@ export type Tier =
 /** Parsed CLI flags: `--k v` / `--k=v` become strings, bare `--flag` becomes `true`. */
 export type Flags = Record<string, string | boolean>;
 
+/** The provider a token count came from; `"none"` when no tokens were recorded. */
+export type TokenType = "none" | "claude" | "openai" | (string & {});
+
 /** A completed activity ready to insert. Optional fields may be omitted or explicitly null. */
 export interface EventInput {
   start: number;
@@ -25,6 +28,8 @@ export interface EventInput {
   subcommand?: string | null;
   status?: string | null;
   sourceKey?: string | null;
+  tokens?: number | null;
+  tokenType?: TokenType | null;
 }
 
 /**
@@ -42,6 +47,8 @@ export interface MarkerEvent {
   ts: number;
   status?: string | null;
   key?: string;
+  tokens?: number | null;
+  tokenType?: TokenType | null;
 }
 
 /** A row selected from `event` with elapsed pre-computed (`"end" - start`, microseconds). */
